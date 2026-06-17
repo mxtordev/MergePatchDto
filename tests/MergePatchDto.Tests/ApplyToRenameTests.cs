@@ -7,17 +7,17 @@ public class ApplyToRenameTests
     [Fact]
     public void ApplyToUsesPatchToMapping()
     {
-        var target = new Event
+        var target = new Document
         {
             Name = "Old",
-            TermsUrl = "old-url"
+            Summary = "old-url"
         };
 
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "termsAndConditionsUrl": null }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "description": null }""", JsonOptions.CamelCase)!;
 
         patch.ApplyTo(target);
 
         Assert.Equal("Old", target.Name);
-        Assert.Null(target.TermsUrl);
+        Assert.Null(target.Summary);
     }
 }

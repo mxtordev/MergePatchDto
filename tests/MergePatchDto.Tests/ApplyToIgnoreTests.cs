@@ -7,17 +7,17 @@ public class ApplyToIgnoreTests
     [Fact]
     public void ApplyToSkipsPatchIgnoredProperty()
     {
-        var target = new Event
+        var target = new Document
         {
             Name = "Old"
         };
 
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "clientMutationId": "abc" }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "requestId": "abc" }""", JsonOptions.CamelCase)!;
 
         patch.ApplyTo(target);
 
-        Assert.True(patch.Has.ClientMutationId);
-        Assert.Equal("abc", patch.ClientMutationId);
+        Assert.True(patch.Has.RequestId);
+        Assert.Equal("abc", patch.RequestId);
         Assert.Equal("Old", target.Name);
     }
 }

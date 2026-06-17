@@ -3,19 +3,19 @@ using MergePatch;
 
 namespace MergePatchDto.Tests;
 
-public sealed class Event
+public sealed class Document
 {
     private string? _name;
-    private string? _termsUrl;
-    private int? _capacity;
+    private string? _summary;
+    private int? _priority;
     private Address? _location;
     private string[]? _tags;
 
     public int NameSetCount { get; private set; }
 
-    public int TermsUrlSetCount { get; private set; }
+    public int SummarySetCount { get; private set; }
 
-    public int CapacitySetCount { get; private set; }
+    public int PrioritySetCount { get; private set; }
 
     public int LocationSetCount { get; private set; }
 
@@ -31,13 +31,13 @@ public sealed class Event
         }
     }
 
-    public string? TermsUrl
+    public string? Summary
     {
-        get => _termsUrl;
+        get => _summary;
         set
         {
-            TermsUrlSetCount++;
-            _termsUrl = value;
+            SummarySetCount++;
+            _summary = value;
         }
     }
 
@@ -61,16 +61,16 @@ public sealed class Event
         }
     }
 
-    public int? Capacity => _capacity;
+    public int? Priority => _priority;
 
-    public void SetCapacity(int? value)
+    public void SetPriority(int? value)
     {
-        CapacitySetCount++;
-        _capacity = value;
+        PrioritySetCount++;
+        _priority = value;
     }
 }
 
-public sealed class EventDraft
+public sealed class DocumentDraft
 {
     public string? Name { get; set; }
 }
@@ -80,33 +80,33 @@ public sealed class Address
     public string? City { get; set; }
 }
 
-[MergePatch(typeof(Event))]
-public partial class UpdateEventPatch
+[MergePatch(typeof(Document))]
+public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
 
-    [PatchTo(nameof(Event.TermsUrl))]
-    public string? TermsAndConditionsUrl { get; set; }
+    [PatchTo(nameof(Document.Summary))]
+    public string? Description { get; set; }
 
     [PatchIgnore]
-    public string? ClientMutationId { get; set; }
+    public string? RequestId { get; set; }
 
-    [PatchUsing(nameof(ApplyCapacity))]
-    public int? MaxParticipants { get; set; }
+    [PatchUsing(nameof(ApplyPriority))]
+    public int? Priority { get; set; }
 
     public Address? Location { get; set; }
 
     public string[]? Tags { get; set; }
 
-    private static void ApplyCapacity(Event target, int? value)
+    private static void ApplyPriority(Document target, int? value)
     {
-        target.SetCapacity(value);
+        target.SetPriority(value);
     }
 }
 
 [MergePatch]
-[MergePatchTarget(typeof(Event))]
-[MergePatchTarget(typeof(EventDraft))]
+[MergePatchTarget(typeof(Document))]
+[MergePatchTarget(typeof(DocumentDraft))]
 public partial class MultiTargetPatch
 {
     public string? Name { get; set; }
@@ -119,7 +119,7 @@ public partial class PresenceOnlyPatch
 
     public string? ExternalName { get; set; }
 
-    public int? CapacityDelta { get; set; }
+    public int? PriorityDelta { get; set; }
 }
 
 [MergePatch]
@@ -131,8 +131,8 @@ public partial class JsonNamingPatch
 [MergePatch]
 public partial class JsonPropertyNamePatch
 {
-    [JsonPropertyName("terms_url")]
-    public string? TermsAndConditionsUrl { get; set; }
+    [JsonPropertyName("summary_text")]
+    public string? Description { get; set; }
 }
 
 [MergePatch]
@@ -141,7 +141,7 @@ public partial class JsonIgnorePatch
     public string? Name { get; set; }
 
     [JsonIgnore]
-    public string? ClientMutationId { get; set; }
+    public string? RequestId { get; set; }
 }
 
 [MergePatch]
@@ -156,17 +156,17 @@ public partial class UnknownRejectedPatch
     public string? Name { get; set; }
 }
 
-[MergePatch(typeof(Event))]
+[MergePatch(typeof(Document))]
 public partial class InstanceUsingPatch
 {
-    [PatchUsing(nameof(ApplyCapacity))]
-    public int? MaxParticipants { get; set; }
+    [PatchUsing(nameof(ApplyPriority))]
+    public int? Priority { get; set; }
 
-    private static void ApplyCapacity(InstanceUsingPatch patch, Event target, int? value)
+    private static void ApplyPriority(InstanceUsingPatch patch, Document target, int? value)
     {
-        if (patch.Has.MaxParticipants)
+        if (patch.Has.Priority)
         {
-            target.SetCapacity(value);
+            target.SetPriority(value);
         }
     }
 }

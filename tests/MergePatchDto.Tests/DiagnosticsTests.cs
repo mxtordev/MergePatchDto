@@ -117,14 +117,14 @@ public class DiagnosticsTests
 
             public class Target
             {
-                public int? Capacity { get; set; }
+                public int? Priority { get; set; }
             }
 
             [MergePatch(typeof(Target))]
             public partial class Patch
             {
-                [PatchUsing("ApplyCapacity")]
-                public int? Capacity { get; set; }
+                [PatchUsing("ApplyPriority")]
+                public int? Priority { get; set; }
             }
             """);
 
@@ -140,16 +140,16 @@ public class DiagnosticsTests
 
             public class Target
             {
-                public int? Capacity { get; set; }
+                public int? Priority { get; set; }
             }
 
             [MergePatch(typeof(Target))]
             public partial class Patch
             {
-                [PatchUsing(nameof(ApplyCapacity))]
-                public int? Capacity { get; set; }
+                [PatchUsing(nameof(ApplyPriority))]
+                public int? Priority { get; set; }
 
-                private static int ApplyCapacity(Target target, int? value)
+                private static int ApplyPriority(Target target, int? value)
                 {
                     return 0;
                 }
@@ -386,7 +386,7 @@ public class DiagnosticsTests
                 public string? Name { get; set; }
 
                 [PatchUsing("MissingBecauseNoTargetExists")]
-                public int? CapacityDelta { get; set; }
+                public int? PriorityDelta { get; set; }
             }
             """);
 

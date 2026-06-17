@@ -7,12 +7,12 @@ public class NestedAndArraySemanticsTests
     [Fact]
     public void NestedObjectIsTreatedAsProvidedReplacementValue()
     {
-        var target = new Event
+        var target = new Document
         {
             Location = new Address { City = "Old" }
         };
 
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "location": { "city": "New" } }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "location": { "city": "New" } }""", JsonOptions.CamelCase)!;
 
         patch.ApplyTo(target);
 
@@ -24,12 +24,12 @@ public class NestedAndArraySemanticsTests
     [Fact]
     public void ArraysAreTreatedAsReplacementValues()
     {
-        var target = new Event
+        var target = new Document
         {
             Tags = ["old"]
         };
 
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "tags": ["new", "featured"] }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "tags": ["new", "featured"] }""", JsonOptions.CamelCase)!;
 
         patch.ApplyTo(target);
 

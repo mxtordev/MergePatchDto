@@ -21,23 +21,23 @@ Define a partial patch DTO and point it at the type it updates:
 ```csharp
 using MergePatch;
 
-[MergePatch(typeof(Event))]
-public partial class UpdateEventPatch
+[MergePatch(typeof(Document))]
+public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
 
-    [PatchTo(nameof(Event.TermsUrl))]
-    public string? TermsAndConditionsUrl { get; set; }
+    [PatchTo(nameof(Document.Summary))]
+    public string? Description { get; set; }
 
     [PatchIgnore]
-    public string? ClientMutationId { get; set; }
+    public string? RequestId { get; set; }
 
-    [PatchUsing(nameof(ApplyCapacity))]
-    public int? MaxParticipants { get; set; }
+    [PatchUsing(nameof(ApplyPriority))]
+    public int? Priority { get; set; }
 
-    private static void ApplyCapacity(Event target, int? value)
+    private static void ApplyPriority(Document target, int? value)
     {
-        target.SetCapacity(value);
+        target.SetPriority(value);
     }
 }
 ```
@@ -45,15 +45,15 @@ public partial class UpdateEventPatch
 Use it directly in an endpoint:
 
 ```csharp
-public async Task<IActionResult> Patch(Guid id, UpdateEventPatch patch)
+public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
 {
-    var ev = await db.Events.FindAsync(id);
-    if (ev is null)
+    var document = await db.Documents.FindAsync(id);
+    if (document is null)
     {
         return NotFound();
     }
 
-    patch.ApplyTo(ev);
+    patch.ApplyTo(document);
 
     await db.SaveChangesAsync();
     return NoContent();
@@ -64,11 +64,11 @@ public async Task<IActionResult> Patch(Guid id, UpdateEventPatch patch)
 
 ```json
 {
-  "termsAndConditionsUrl": null
+  "description": null
 }
 ```
 
-This clears `Event.TermsUrl` and leaves every omitted property unchanged.
+This clears `Document.Summary` and leaves every omitted property unchanged.
 
 ## Presence Checks
 
@@ -78,8 +78,8 @@ The generated `Has` API stays useful when the update needs explicit domain logic
 var has = patch.Has;
 
 if (has.Name) entity.Name = patch.Name;
-if (has.Description) entity.Description = patch.Description;
-if (has.TermsAndConditionsUrl) entity.TermsUrl = patch.TermsAndConditionsUrl;
+if (has.Description) entity.Summary = patch.Description;
+if (has.Priority) entity.SetPriority(patch.Priority);
 ```
 
 ## Targetless Patches
@@ -90,10 +90,10 @@ If you only want JSON presence tracking, omit the target type:
 using MergePatch;
 
 [MergePatch]
-public partial class UpdateEventPatch
+public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
-    public int? CapacityDelta { get; set; }
+    public int? PriorityDelta { get; set; }
 }
 ```
 
@@ -105,8 +105,8 @@ var has = patch.Has;
 if (has.Name)
     entity.Name = patch.Name;
 
-if (has.CapacityDelta)
-    entity.IncrementCapacity(patch.CapacityDelta.GetValueOrDefault());
+if (has.PriorityDelta)
+    entity.IncrementPriority(patch.PriorityDelta.GetValueOrDefault());
 ```
 
 ## Mapping Rules
@@ -121,8 +121,8 @@ By default, patch properties map to target properties with the same CLR name.
 Supported custom apply signatures are:
 
 ```csharp
-private static void ApplyCapacity(Event target, int? value)
-private static void ApplyCapacity(UpdateEventPatch patch, Event target, int? value)
+private static void ApplyPriority(Document target, int? value)
+private static void ApplyPriority(UpdateDocumentPatch patch, Document target, int? value)
 ```
 
 Target-specific mapping attributes have no effect on targetless patch types and produce a warning.
