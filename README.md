@@ -136,7 +136,7 @@ The converter:
 - tracks top-level JSON property presence
 - stores presence by CLR property name
 - respects `JsonPropertyNameAttribute`
-- respects `JsonIgnoreAttribute`
+- respects `JsonIgnoreAttribute` read behavior
 - respects `JsonSerializerOptions.PropertyNamingPolicy`
 - treats explicit `null` as provided
 
