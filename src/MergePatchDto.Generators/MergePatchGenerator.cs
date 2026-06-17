@@ -237,10 +237,50 @@ namespace MergePatchDto.Generators
                 ToTypeName(property.Type),
                 property.SetMethod?.IsInitOnly == true,
                 JsonNameResolver.GetJsonPropertyName(property),
+                GetJsonConverterTypeName(property),
+                GetJsonNumberHandling(property),
                 hasPatchIgnore,
                 patchToTargetName,
                 patchUsingMethodName,
                 property.Locations.FirstOrDefault());
+        }
+
+        private static string? GetJsonConverterTypeName(IPropertySymbol property)
+        {
+            foreach (var attribute in property.GetAttributes())
+            {
+                if (!JsonNameResolver.IsAttribute(attribute, JsonNameResolver.JsonConverterAttributeName))
+                {
+                    continue;
+                }
+
+                if (attribute.ConstructorArguments.Length == 1 &&
+                    attribute.ConstructorArguments[0].Value is ITypeSymbol converterType)
+                {
+                    return ToTypeName(converterType);
+                }
+            }
+
+            return null;
+        }
+
+        private static int? GetJsonNumberHandling(IPropertySymbol property)
+        {
+            foreach (var attribute in property.GetAttributes())
+            {
+                if (!JsonNameResolver.IsAttribute(attribute, JsonNameResolver.JsonNumberHandlingAttributeName))
+                {
+                    continue;
+                }
+
+                if (attribute.ConstructorArguments.Length == 1 &&
+                    attribute.ConstructorArguments[0].Value is int value)
+                {
+                    return value;
+                }
+            }
+
+            return null;
         }
 
         private static PatchTargetModel? BuildTargetModel(AttributeData attribute)

@@ -369,7 +369,7 @@ namespace MergePatchDto.Generators
                     .AppendLine(", options), options))");
                 builder.Append(indent).AppendLine("            {");
 
-                var deserializeExpression = "global::System.Text.Json.JsonSerializer.Deserialize<" + property.TypeName + ">(jsonProperty.Value, options)";
+                var deserializeExpression = "global::System.Text.Json.JsonSerializer.Deserialize<" + property.TypeName + ">(jsonProperty.Value, " + GetJsonOptionsExpression(property, "options") + ")";
                 if (property.IsInitOnly)
                 {
                     builder.Append(indent)
@@ -438,7 +438,9 @@ namespace MergePatchDto.Generators
                     .Append(property.TypeName)
                     .Append(">(writer, value.")
                     .Append(EscapeIdentifier(property.Name))
-                    .AppendLine(", options);");
+                    .Append(", ")
+                    .Append(GetJsonOptionsExpression(property, "options"))
+                    .AppendLine(");");
                 builder.Append(indent).AppendLine("    }");
             }
 
@@ -473,6 +475,42 @@ namespace MergePatchDto.Generators
                 builder.Append(indent).AppendLine("    }");
                 builder.AppendLine();
                 builder.Append(indent).AppendLine("    property.SetValue(patch, value, null);");
+                builder.Append(indent).AppendLine("}");
+            }
+
+            foreach (var property in model.Properties.Where(property => property.HasPropertyJsonOptions))
+            {
+                builder.AppendLine();
+                builder.Append(indent)
+                    .Append("private static global::System.Text.Json.JsonSerializerOptions __MergePatchGet")
+                    .Append(property.Name)
+                    .AppendLine("JsonOptions(global::System.Text.Json.JsonSerializerOptions options)");
+                builder.Append(indent).AppendLine("{");
+                builder.Append(indent).AppendLine("    var mergePatchOptions = new global::System.Text.Json.JsonSerializerOptions(options);");
+
+                if (property.JsonConverterTypeName != null)
+                {
+                    builder.Append(indent)
+                        .Append("    var converter = (global::System.Text.Json.Serialization.JsonConverter?)global::System.Activator.CreateInstance(typeof(")
+                        .Append(property.JsonConverterTypeName)
+                        .AppendLine("));");
+                    builder.Append(indent).AppendLine("    if (converter == null)");
+                    builder.Append(indent).AppendLine("    {");
+                    builder.Append(indent).AppendLine("        throw new global::System.InvalidOperationException(\"Patch DTO property converter could not be created.\");");
+                    builder.Append(indent).AppendLine("    }");
+                    builder.AppendLine();
+                    builder.Append(indent).AppendLine("    mergePatchOptions.Converters.Insert(0, converter);");
+                }
+
+                if (property.JsonNumberHandling.HasValue)
+                {
+                    builder.Append(indent)
+                        .Append("    mergePatchOptions.NumberHandling = (global::System.Text.Json.Serialization.JsonNumberHandling)")
+                        .Append(property.JsonNumberHandling.Value)
+                        .AppendLine(";");
+                }
+
+                builder.Append(indent).AppendLine("    return mergePatchOptions;");
                 builder.Append(indent).AppendLine("}");
             }
 
@@ -659,6 +697,13 @@ namespace MergePatchDto.Generators
             return string.IsNullOrEmpty(namespaceName)
                 ? "global::" + typeName
                 : "global::" + namespaceName + "." + typeName;
+        }
+
+        private static string GetJsonOptionsExpression(PatchPropertyModel property, string optionsExpression)
+        {
+            return property.HasPropertyJsonOptions
+                ? "__MergePatchGet" + property.Name + "JsonOptions(" + optionsExpression + ")"
+                : optionsExpression;
         }
 
         private static string EscapeIdentifier(string identifier)
