@@ -65,7 +65,7 @@ namespace MergePatchDto.Generators
             "Target property has no accessible setter",
             "Target property '{0}' on '{1}' has no accessible setter; MergePatchDto will not generate an assignment for patch property '{2}'",
             "MergePatchDto",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
         public static readonly DiagnosticDescriptor TargetlessMappingAttributeIgnored = new DiagnosticDescriptor(

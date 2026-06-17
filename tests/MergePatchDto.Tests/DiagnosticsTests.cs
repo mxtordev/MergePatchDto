@@ -160,7 +160,7 @@ public class DiagnosticsTests
     }
 
     [Fact]
-    public void ReportsWarningForTargetPropertyWithoutSetter()
+    public void ReportsErrorForTargetPropertyWithoutSetter()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -178,7 +178,60 @@ public class DiagnosticsTests
             }
             """);
 
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void AllowsInternalTargetSetterWhenTargetIsInSameAssembly()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public string? Name { get; internal set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "MPD008");
+    }
+
+    [Fact]
+    public void ReportsErrorForInternalTargetSetterInReferencedAssembly()
+    {
+        var domainReference = DiagnosticTestHelper.CreateReference(
+            "Domain",
+            """
+            namespace Domain;
+
+            public class Target
+            {
+                public string? Name { get; internal set; }
+            }
+            """);
+
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using Domain;
+            using MergePatch;
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """,
+            [domainReference]);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS0272");
     }
 
     [Fact]

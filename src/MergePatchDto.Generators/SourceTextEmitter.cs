@@ -17,7 +17,7 @@ namespace MergePatchDto.Generators
                 SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
                 SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
-        public static string Emit(PatchDtoModel model, SourceProductionContext context)
+        public static string Emit(PatchDtoModel model, Compilation compilation, SourceProductionContext context)
         {
             if (model.Targets.Length > 0)
             {
@@ -58,7 +58,7 @@ namespace MergePatchDto.Generators
 
             foreach (var target in model.Targets)
             {
-                AppendApplyTo(builder, model, target, context, indent + "    ");
+                AppendApplyTo(builder, model, target, compilation, context, indent + "    ");
             }
 
             builder.Append(indent).AppendLine("}");
@@ -149,6 +149,7 @@ namespace MergePatchDto.Generators
             StringBuilder builder,
             PatchDtoModel model,
             PatchTargetModel target,
+            Compilation compilation,
             SourceProductionContext context,
             string indent)
         {
@@ -182,7 +183,7 @@ namespace MergePatchDto.Generators
                     continue;
                 }
 
-                AppendDirectAssignment(builder, target, property, context, indent + "    ");
+                AppendDirectAssignment(builder, model, target, property, compilation, context, indent + "    ");
             }
 
             builder.Append(indent).AppendLine("}");
@@ -190,8 +191,10 @@ namespace MergePatchDto.Generators
 
         private static void AppendDirectAssignment(
             StringBuilder builder,
+            PatchDtoModel model,
             PatchTargetModel target,
             PatchPropertyModel property,
+            Compilation compilation,
             SourceProductionContext context,
             string indent)
         {
@@ -228,7 +231,7 @@ namespace MergePatchDto.Generators
                 return;
             }
 
-            if (!HasAccessibleSetter(targetProperty))
+            if (!HasAccessibleSetter(compilation, model.TypeSymbol, target.TargetType, targetProperty))
             {
                 context.ReportDiagnostic(Diagnostic.Create(
                     Diagnostics.TargetPropertyNoSetter,
@@ -600,27 +603,24 @@ namespace MergePatchDto.Generators
             return SymbolEqualityComparer.Default.Equals(left, right);
         }
 
-        private static bool HasAccessibleSetter(IPropertySymbol property)
+        private static bool HasAccessibleSetter(
+            Compilation compilation,
+            INamedTypeSymbol patchType,
+            ITypeSymbol targetType,
+            IPropertySymbol property)
         {
-            if (property.SetMethod == null)
+            var setter = property.SetMethod;
+            if (setter == null)
             {
                 return false;
             }
 
-            if (property.SetMethod.IsInitOnly)
+            if (setter.IsInitOnly)
             {
                 return false;
             }
 
-            switch (property.SetMethod.DeclaredAccessibility)
-            {
-                case Accessibility.Public:
-                case Accessibility.Internal:
-                case Accessibility.ProtectedOrInternal:
-                    return true;
-                default:
-                    return false;
-            }
+            return compilation.IsSymbolAccessibleWithin(setter, patchType, targetType);
         }
 
         private static string ToTypeName(ITypeSymbol symbol)

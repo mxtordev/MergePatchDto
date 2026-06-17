@@ -24,8 +24,12 @@ namespace MergePatchDto.Generators
                 static (syntaxContext, _) => BuildModel(syntaxContext))
                 .Where(static model => model != null);
 
-            context.RegisterSourceOutput(patchDtos, static (sourceContext, model) =>
+            var patchDtosWithCompilation = patchDtos.Combine(context.CompilationProvider);
+
+            context.RegisterSourceOutput(patchDtosWithCompilation, static (sourceContext, item) =>
             {
+                var model = item.Left;
+                var compilation = item.Right;
                 if (model == null)
                 {
                     return;
@@ -48,7 +52,7 @@ namespace MergePatchDto.Generators
                         model.TypeSymbol.Name));
                 }
 
-                var source = SourceTextEmitter.Emit(model, sourceContext);
+                var source = SourceTextEmitter.Emit(model, compilation, sourceContext);
                 sourceContext.AddSource(SourceTextEmitter.GetHintName(model), SourceText.From(source, System.Text.Encoding.UTF8));
             });
         }
