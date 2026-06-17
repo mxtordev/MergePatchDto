@@ -102,7 +102,7 @@ namespace MergePatchDto.Generators
             builder.Append(indent).AppendLine("    get { return new ProvidedFields(this); }");
             builder.Append(indent).AppendLine("}");
             builder.AppendLine();
-            builder.Append(indent).AppendLine("public bool WasProvided(string propertyName)");
+            builder.Append(indent).AppendLine("internal bool __MergePatchWasProvided(string propertyName)");
             builder.Append(indent).AppendLine("{");
             builder.Append(indent).AppendLine("    if (propertyName == null)");
             builder.Append(indent).AppendLine("    {");
@@ -137,7 +137,7 @@ namespace MergePatchDto.Generators
                 builder.Append(indent)
                     .Append("    public bool ")
                     .Append(EscapeIdentifier(property.Name))
-                    .Append(" { get { return _patch.WasProvided(")
+                    .Append(" { get { return _patch.__MergePatchWasProvided(")
                     .Append(ToLiteral(property.Name))
                     .AppendLine("); } }");
             }
@@ -423,7 +423,7 @@ namespace MergePatchDto.Generators
             {
                 builder.AppendLine();
                 builder.Append(indent)
-                    .Append("    if (value.WasProvided(")
+                    .Append("    if (value.__MergePatchWasProvided(")
                     .Append(ToLiteral(property.Name))
                     .AppendLine("))");
                 builder.Append(indent).AppendLine("    {");
