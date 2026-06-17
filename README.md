@@ -97,7 +97,7 @@ public partial class UpdateDocumentPatch
 }
 ```
 
-MergePatchDto still generates the JSON converter and `Has` API, but does not generate an untyped or reflection-based `ApplyTo`.
+MergePatchDto still generates the JSON converter and `Has` API. Add a target type when you want a typed generated `ApplyTo` method.
 
 ```csharp
 var has = patch.Has;
