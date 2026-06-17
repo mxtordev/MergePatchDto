@@ -160,6 +160,88 @@ public class DiagnosticsTests
     }
 
     [Fact]
+    public void ReportsErrorForRefPatchUsingValueParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public int? Priority { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyPriority))]
+                public int? Priority { get; set; }
+
+                private static void ApplyPriority(Target target, ref int? value)
+                {
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD007" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForOutPatchUsingValueParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public int? Priority { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyPriority))]
+                public int? Priority { get; set; }
+
+                private static void ApplyPriority(Target target, out int? value)
+                {
+                    value = null;
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD007" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForInPatchUsingValueParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public int? Priority { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyPriority))]
+                public int? Priority { get; set; }
+
+                private static void ApplyPriority(Target target, in int? value)
+                {
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD007" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
     public void ReportsErrorForTargetPropertyWithoutSetter()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
