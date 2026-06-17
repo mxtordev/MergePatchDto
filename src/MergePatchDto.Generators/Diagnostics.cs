@@ -79,7 +79,7 @@ namespace MergePatchDto.Generators
         public static readonly DiagnosticDescriptor GenericPatchDtoNotSupported = new DiagnosticDescriptor(
             "MPD010",
             "Generic merge patch DTOs are not supported",
-            "Merge patch DTO '{0}' cannot be generic in v1",
+            "Merge patch DTO '{0}' cannot be generic",
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -87,7 +87,7 @@ namespace MergePatchDto.Generators
         public static readonly DiagnosticDescriptor NestedPatchDtoNotSupported = new DiagnosticDescriptor(
             "MPD011",
             "Nested merge patch DTOs are not supported",
-            "Merge patch DTO '{0}' cannot be nested inside another type in v1",
+            "Merge patch DTO '{0}' cannot be nested inside another type",
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
@@ -103,7 +103,7 @@ namespace MergePatchDto.Generators
         public static readonly DiagnosticDescriptor RequiredPatchDtoMembersNotSupported = new DiagnosticDescriptor(
             "MPD013",
             "Required merge patch DTO members are not supported",
-            "Merge patch DTO '{0}' uses required member '{1}', which is not supported by the generated converter in v1",
+            "Merge patch DTO '{0}' uses required member '{1}', which is not supported by the generated converter",
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
