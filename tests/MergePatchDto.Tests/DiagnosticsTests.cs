@@ -182,7 +182,7 @@ public class DiagnosticsTests
     }
 
     [Fact]
-    public void DoesNotRunMappingDiagnosticsForTargetAgnosticPatch()
+    public void WarnsWhenTargetlessPatchUsesTargetMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -200,10 +200,11 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id is "MPD004" or "MPD005" or "MPD006" or "MPD007");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
     }
 
     [Fact]
-    public void DoesNotReportTargetMappingConflictsForTargetAgnosticPatch()
+    public void WarnsInsteadOfReportingConflictsForTargetlessPatchMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -219,5 +220,24 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "MPD003");
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void WarnsWhenTargetlessPatchUsesPatchIgnore()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public partial class Patch
+            {
+                [PatchIgnore]
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
     }
 }

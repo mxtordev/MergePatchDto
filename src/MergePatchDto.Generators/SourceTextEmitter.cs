@@ -23,6 +23,10 @@ namespace MergePatchDto.Generators
             {
                 ReportPropertyAttributeConflicts(model, context);
             }
+            else
+            {
+                ReportTargetlessMappingAttributes(model, context);
+            }
 
             var builder = new StringBuilder();
             var converterName = model.Name + "JsonConverter";
@@ -505,6 +509,56 @@ namespace MergePatchDto.Generators
                         "PatchTo and PatchUsing"));
                 }
             }
+        }
+
+        private static void ReportTargetlessMappingAttributes(PatchDtoModel model, SourceProductionContext context)
+        {
+            foreach (var property in model.Properties)
+            {
+                var mappingAttributes = GetTargetlessMappingAttributeList(property);
+                if (mappingAttributes == null)
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.TargetlessMappingAttributeIgnored,
+                    property.Location,
+                    property.Name,
+                    mappingAttributes));
+            }
+        }
+
+        private static string? GetTargetlessMappingAttributeList(PatchPropertyModel property)
+        {
+            var builder = new StringBuilder();
+
+            if (property.HasPatchIgnore)
+            {
+                builder.Append("PatchIgnore");
+            }
+
+            if (property.PatchToTargetName != null)
+            {
+                AppendAttributeName(builder, "PatchTo");
+            }
+
+            if (property.PatchUsingMethodName != null)
+            {
+                AppendAttributeName(builder, "PatchUsing");
+            }
+
+            return builder.Length == 0 ? null : builder.ToString();
+        }
+
+        private static void AppendAttributeName(StringBuilder builder, string name)
+        {
+            if (builder.Length > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(name);
         }
 
         private static bool HasConflictingApplyAttributes(PatchPropertyModel property)

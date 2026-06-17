@@ -36,7 +36,7 @@ public partial class UpdateEventPatch
 
 Use `[MergePatchTarget(typeof(OtherTarget))]` only when one patch DTO needs extra `ApplyTo` overloads.
 
-If you do not want generated target assignment, omit the target type. MergePatchDto will still generate the JSON converter and presence API:
+If you do not want generated target assignment, omit the target type. MergePatchDto will still generate the JSON converter and presence API, but it will not generate an untyped or reflection-based `ApplyTo`:
 
 ```csharp
 using MergePatch;
@@ -59,7 +59,7 @@ if (has.CapacityDelta)
     entity.IncrementCapacity(patch.CapacityDelta.GetValueOrDefault());
 ```
 
-Target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` are only validated and applied when the patch type has a target.
+Target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` are only validated and applied when the patch type has a target. On targetless patch types, those attributes produce a warning because they have no generated `ApplyTo` effect.
 
 ```csharp
 public async Task<IActionResult> Patch(Guid id, UpdateEventPatch patch)

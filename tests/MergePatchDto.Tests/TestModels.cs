@@ -117,11 +117,8 @@ public partial class PresenceOnlyPatch
 {
     public string? Name { get; set; }
 
-    [PatchTo("IgnoredBecauseNoTargetExists")]
     public string? ExternalName { get; set; }
 
-    [PatchIgnore]
-    [PatchUsing("IgnoredBecauseNoTargetExists")]
     public int? CapacityDelta { get; set; }
 }
 

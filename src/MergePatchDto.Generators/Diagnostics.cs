@@ -67,5 +67,13 @@ namespace MergePatchDto.Generators
             "MergePatchDto",
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor TargetlessMappingAttributeIgnored = new DiagnosticDescriptor(
+            "MPD009",
+            "Targetless patch property has ignored mapping attributes",
+            "Patch property '{0}' uses {1}, but targetless merge patch types do not generate ApplyTo; the attribute is ignored",
+            "MergePatchDto",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
     }
 }
