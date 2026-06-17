@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MergePatchDto.Generators/MergePatchDto.Generators.csproj" />
+    <Project Path="src/MergePatchDto/MergePatchDto.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MergePatchDto.Tests/MergePatchDto.Tests.csproj" />
+  </Folder>
+</Solution>
