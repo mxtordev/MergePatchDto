@@ -162,7 +162,7 @@ namespace MergePatchDto.Generators
                 .GetMembers()
                 .OfType<IPropertySymbol>()
                 .Where(IsPatchProperty)
-                .Where(property => !JsonNameResolver.HasJsonIgnore(property))
+                .Where(property => !JsonNameResolver.IsIgnoredOnRead(property))
                 .Select(BuildPropertyModel)
                 .ToImmutableArray();
 

@@ -145,6 +145,26 @@ public partial class JsonIgnorePatch
 }
 
 [MergePatch]
+public partial class ConditionalJsonIgnorePatch
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NullableText { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Count { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+    public string? IncludedText { get; set; }
+}
+
+[MergePatch(UnknownPropertyHandling = UnknownPropertyHandling.Reject)]
+public partial class StrictConditionalJsonIgnorePatch
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? NullableText { get; set; }
+}
+
+[MergePatch]
 public partial class UnknownIgnoredPatch
 {
     public string? Name { get; set; }

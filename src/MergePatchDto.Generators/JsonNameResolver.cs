@@ -8,9 +8,19 @@ namespace MergePatchDto.Generators
         public const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
         public const string JsonPropertyNameAttributeName = "System.Text.Json.Serialization.JsonPropertyNameAttribute";
 
-        public static bool HasJsonIgnore(IPropertySymbol property)
+        public static bool IsIgnoredOnRead(IPropertySymbol property)
         {
-            return property.GetAttributes().Any(attribute => IsAttribute(attribute, JsonIgnoreAttributeName));
+            foreach (var attribute in property.GetAttributes())
+            {
+                if (!IsAttribute(attribute, JsonIgnoreAttributeName))
+                {
+                    continue;
+                }
+
+                return IsJsonIgnoreConditionIgnoredOnRead(attribute);
+            }
+
+            return false;
         }
 
         public static string? GetJsonPropertyName(IPropertySymbol property)
@@ -34,6 +44,62 @@ namespace MergePatchDto.Generators
         public static bool IsAttribute(AttributeData attribute, string fullyQualifiedMetadataName)
         {
             return attribute.AttributeClass?.ToDisplayString() == fullyQualifiedMetadataName;
+        }
+
+        private static bool IsJsonIgnoreConditionIgnoredOnRead(AttributeData attribute)
+        {
+            foreach (var namedArgument in attribute.NamedArguments)
+            {
+                if (namedArgument.Key != "Condition")
+                {
+                    continue;
+                }
+
+                return IsJsonIgnoreConditionIgnoredOnRead(namedArgument.Value);
+            }
+
+            return true;
+        }
+
+        private static bool IsJsonIgnoreConditionIgnoredOnRead(TypedConstant condition)
+        {
+            var conditionName = GetEnumConstantName(condition);
+            switch (conditionName)
+            {
+                case "Never":
+                case "WhenWriting":
+                case "WhenWritingDefault":
+                case "WhenWritingNull":
+                    return false;
+                case "Always":
+                case "WhenReading":
+                default:
+                    return true;
+            }
+        }
+
+        private static string? GetEnumConstantName(TypedConstant constant)
+        {
+            var enumType = constant.Type;
+            if (enumType == null)
+            {
+                return null;
+            }
+
+            foreach (var field in enumType.GetMembers().OfType<IFieldSymbol>())
+            {
+                if (!field.HasConstantValue)
+                {
+                    continue;
+                }
+
+                if (Equals(field.ConstantValue, constant.Value))
+                {
+                    return field.Name;
+                }
+            }
+
+            return null;
         }
     }
 }
