@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using MergePatch;
 
@@ -133,6 +134,37 @@ public partial class JsonPropertyNamePatch
 {
     [JsonPropertyName("summary_text")]
     public string? Description { get; set; }
+}
+
+public sealed class PrefixStringConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return "read:" + reader.GetString();
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue("write:" + value);
+    }
+}
+
+public enum PropertyMetadataStatus
+{
+    Draft,
+    Published
+}
+
+[MergePatch]
+public partial class PropertyMetadataPatch
+{
+    [JsonConverter(typeof(PrefixStringConverter))]
+    public string? Code { get; set; }
+
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    public int Count { get; set; }
+
+    public PropertyMetadataStatus Status { get; set; }
 }
 
 [MergePatch]

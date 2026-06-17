@@ -6,6 +6,8 @@ namespace MergePatchDto.Generators
     internal static class JsonNameResolver
     {
         public const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
+        public const string JsonConverterAttributeName = "System.Text.Json.Serialization.JsonConverterAttribute";
+        public const string JsonNumberHandlingAttributeName = "System.Text.Json.Serialization.JsonNumberHandlingAttribute";
         public const string JsonPropertyNameAttributeName = "System.Text.Json.Serialization.JsonPropertyNameAttribute";
 
         public static bool IsIgnoredOnRead(IPropertySymbol property)
