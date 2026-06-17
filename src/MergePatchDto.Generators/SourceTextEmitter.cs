@@ -597,18 +597,25 @@ namespace MergePatchDto.Generators
 
             if (method.Parameters.Length == 2)
             {
-                return IsSameType(method.Parameters[0].Type, target.TargetType) &&
+                return HasOnlyValueParameters(method) &&
+                       IsSameType(method.Parameters[0].Type, target.TargetType) &&
                        IsSameType(method.Parameters[1].Type, property.Symbol.Type);
             }
 
             if (method.Parameters.Length == 3)
             {
-                return IsSameType(method.Parameters[0].Type, model.TypeSymbol) &&
+                return HasOnlyValueParameters(method) &&
+                       IsSameType(method.Parameters[0].Type, model.TypeSymbol) &&
                        IsSameType(method.Parameters[1].Type, target.TargetType) &&
                        IsSameType(method.Parameters[2].Type, property.Symbol.Type);
             }
 
             return false;
+        }
+
+        private static bool HasOnlyValueParameters(IMethodSymbol method)
+        {
+            return method.Parameters.All(parameter => parameter.RefKind == RefKind.None);
         }
 
         private static bool IsSameType(ITypeSymbol left, ITypeSymbol right)
