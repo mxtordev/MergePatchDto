@@ -8,15 +8,30 @@ namespace MergePatchDto.Tests;
 
 internal static class DiagnosticTestHelper
 {
-    public static IReadOnlyList<Diagnostic> GetDiagnostics(string source)
+    public static IReadOnlyList<Diagnostic> GetDiagnostics(
+        string source,
+        IEnumerable<MetadataReference>? additionalReferences = null)
+    {
+        return GetAllDiagnostics(source, additionalReferences)
+            .Where(diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal))
+            .ToArray();
+    }
+
+    public static IReadOnlyList<Diagnostic> GetAllDiagnostics(
+        string source,
+        IEnumerable<MetadataReference>? additionalReferences = null)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
         var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
 
+        var references = additionalReferences == null
+            ? GetReferences()
+            : GetReferences().Concat(additionalReferences).ToArray();
+
         var compilation = CSharpCompilation.Create(
             "MergePatchDtoDiagnosticsTests",
             [syntaxTree],
-            GetReferences(),
+            references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
 
         var driver = CSharpGeneratorDriver.Create(
@@ -27,8 +42,29 @@ internal static class DiagnosticTestHelper
 
         return generatorDiagnostics
             .Concat(outputCompilation.GetDiagnostics())
-            .Where(diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal))
             .ToArray();
+    }
+
+    public static MetadataReference CreateReference(string assemblyName, string source)
+    {
+        var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Preview);
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, parseOptions);
+        var compilation = CSharpCompilation.Create(
+            assemblyName,
+            [syntaxTree],
+            GetReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+
+        using var stream = new MemoryStream();
+        var emitResult = compilation.Emit(stream);
+        if (!emitResult.Success)
+        {
+            var diagnostics = string.Join(Environment.NewLine, emitResult.Diagnostics);
+            throw new InvalidOperationException("Failed to create metadata reference:" + Environment.NewLine + diagnostics);
+        }
+
+        stream.Position = 0;
+        return MetadataReference.CreateFromStream(stream);
     }
 
     private static IReadOnlyList<MetadataReference> GetReferences()

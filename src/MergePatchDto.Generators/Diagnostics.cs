@@ -65,7 +65,7 @@ namespace MergePatchDto.Generators
             "Target property has no accessible setter",
             "Target property '{0}' on '{1}' has no accessible setter; MergePatchDto will not generate an assignment for patch property '{2}'",
             "MergePatchDto",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
         public static readonly DiagnosticDescriptor TargetlessMappingAttributeIgnored = new DiagnosticDescriptor(
@@ -74,6 +74,54 @@ namespace MergePatchDto.Generators
             "Patch property '{0}' uses {1}, but targetless merge patch types do not generate ApplyTo; the attribute is ignored",
             "MergePatchDto",
             DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor GenericPatchDtoNotSupported = new DiagnosticDescriptor(
+            "MPD010",
+            "Generic merge patch DTOs are not supported",
+            "Merge patch DTO '{0}' cannot be generic in v1",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor NestedPatchDtoNotSupported = new DiagnosticDescriptor(
+            "MPD011",
+            "Nested merge patch DTOs are not supported",
+            "Merge patch DTO '{0}' cannot be nested inside another type in v1",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor PatchDtoParameterlessConstructorRequired = new DiagnosticDescriptor(
+            "MPD012",
+            "Merge patch DTO requires an accessible parameterless constructor",
+            "Merge patch DTO '{0}' must have an accessible parameterless constructor so its generated JSON converter can create it",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor RequiredPatchDtoMembersNotSupported = new DiagnosticDescriptor(
+            "MPD013",
+            "Required merge patch DTO members are not supported",
+            "Merge patch DTO '{0}' uses required member '{1}', which is not supported by the generated converter in v1",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor PatchPropertyCannotAssignToTargetProperty = new DiagnosticDescriptor(
+            "MPD014",
+            "Patch property cannot be assigned to target property",
+            "Patch property '{0}' of type '{1}' cannot be assigned to target property '{2}' of type '{3}' on '{4}'",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor AbstractPatchDtoNotSupported = new DiagnosticDescriptor(
+            "MPD015",
+            "Abstract merge patch DTOs are not supported",
+            "Merge patch DTO '{0}' cannot be abstract because its generated JSON converter must create an instance",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
     }
 }

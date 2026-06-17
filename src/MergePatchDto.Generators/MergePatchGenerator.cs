@@ -24,8 +24,12 @@ namespace MergePatchDto.Generators
                 static (syntaxContext, _) => BuildModel(syntaxContext))
                 .Where(static model => model != null);
 
-            context.RegisterSourceOutput(patchDtos, static (sourceContext, model) =>
+            var patchDtosWithCompilation = patchDtos.Combine(context.CompilationProvider);
+
+            context.RegisterSourceOutput(patchDtosWithCompilation, static (sourceContext, item) =>
             {
+                var model = item.Left;
+                var compilation = item.Right;
                 if (model == null)
                 {
                     return;
@@ -40,6 +44,11 @@ namespace MergePatchDto.Generators
                     return;
                 }
 
+                if (ReportUnsupportedPatchTypeShape(sourceContext, model))
+                {
+                    return;
+                }
+
                 foreach (var location in model.UnresolvedTargetLocations)
                 {
                     sourceContext.ReportDiagnostic(Diagnostic.Create(
@@ -48,9 +57,96 @@ namespace MergePatchDto.Generators
                         model.TypeSymbol.Name));
                 }
 
-                var source = SourceTextEmitter.Emit(model, sourceContext);
+                var source = SourceTextEmitter.Emit(model, compilation, sourceContext);
                 sourceContext.AddSource(SourceTextEmitter.GetHintName(model), SourceText.From(source, System.Text.Encoding.UTF8));
             });
+        }
+
+        private static bool ReportUnsupportedPatchTypeShape(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+
+            if (model.TypeSymbol.TypeParameters.Length > 0)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.GenericPatchDtoNotSupported,
+                    model.Location,
+                    model.TypeSymbol.Name));
+                hasErrors = true;
+            }
+
+            if (model.TypeSymbol.ContainingType != null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.NestedPatchDtoNotSupported,
+                    model.Location,
+                    model.TypeSymbol.Name));
+                hasErrors = true;
+            }
+
+            if (model.TypeSymbol.IsAbstract)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.AbstractPatchDtoNotSupported,
+                    model.Location,
+                    model.TypeSymbol.Name));
+                hasErrors = true;
+            }
+
+            if (!HasAccessibleParameterlessConstructor(model.TypeSymbol))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.PatchDtoParameterlessConstructorRequired,
+                    model.Location,
+                    model.TypeSymbol.Name));
+                hasErrors = true;
+            }
+
+            foreach (var member in model.TypeSymbol.GetMembers())
+            {
+                if (member is IPropertySymbol { IsRequired: true } property)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.RequiredPatchDtoMembersNotSupported,
+                        property.Locations.FirstOrDefault() ?? model.Location,
+                        model.TypeSymbol.Name,
+                        property.Name));
+                    hasErrors = true;
+                }
+
+                if (member is IFieldSymbol { IsRequired: true } field)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.RequiredPatchDtoMembersNotSupported,
+                        field.Locations.FirstOrDefault() ?? model.Location,
+                        model.TypeSymbol.Name,
+                        field.Name));
+                    hasErrors = true;
+                }
+            }
+
+            return hasErrors;
+        }
+
+        private static bool HasAccessibleParameterlessConstructor(INamedTypeSymbol typeSymbol)
+        {
+            return typeSymbol.InstanceConstructors.Any(constructor =>
+                constructor.Parameters.Length == 0 &&
+                !constructor.IsStatic &&
+                IsConstructorAccessibleFromGeneratedConverter(constructor));
+        }
+
+        private static bool IsConstructorAccessibleFromGeneratedConverter(IMethodSymbol constructor)
+        {
+            switch (constructor.DeclaredAccessibility)
+            {
+                case Accessibility.Public:
+                case Accessibility.Internal:
+                case Accessibility.ProtectedOrInternal:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         private static PatchDtoModel? BuildModel(GeneratorAttributeSyntaxContext context)

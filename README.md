@@ -61,6 +61,10 @@ if (has.CapacityDelta)
 
 Target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` are only validated and applied when the patch type has a target. On targetless patch types, those attributes produce a warning because they have no generated `ApplyTo` effect.
 
+V1 patch DTOs must be top-level, non-generic, non-abstract partial classes with an accessible parameterless constructor and no `required` members. Unsupported shapes fail the build with MergePatchDto diagnostics instead of generated C# errors.
+
+For targeted patch types, every non-ignored direct mapping must resolve to an assignable target property with an accessible setter. Invalid mappings fail the build.
+
 ```csharp
 public async Task<IActionResult> Patch(Guid id, UpdateEventPatch patch)
 {

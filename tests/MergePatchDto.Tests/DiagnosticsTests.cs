@@ -160,7 +160,7 @@ public class DiagnosticsTests
     }
 
     [Fact]
-    public void ReportsWarningForTargetPropertyWithoutSetter()
+    public void ReportsErrorForTargetPropertyWithoutSetter()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -178,7 +178,198 @@ public class DiagnosticsTests
             }
             """);
 
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void AllowsInternalTargetSetterWhenTargetIsInSameAssembly()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public string? Name { get; internal set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "MPD008");
+    }
+
+    [Fact]
+    public void ReportsErrorForInternalTargetSetterInReferencedAssembly()
+    {
+        var domainReference = DiagnosticTestHelper.CreateReference(
+            "Domain",
+            """
+            namespace Domain;
+
+            public class Target
+            {
+                public string? Name { get; internal set; }
+            }
+            """);
+
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using Domain;
+            using MergePatch;
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """,
+            [domainReference]);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD008" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS0272");
+    }
+
+    [Fact]
+    public void ReportsErrorForGenericPatchDto()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public partial class Patch<T>
+            {
+                public T? Value { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD010" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForNestedPatchDto()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Container
+            {
+                [MergePatch]
+                public partial class Patch
+                {
+                    public string? Name { get; set; }
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD011" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorWhenPatchDtoHasNoAccessibleParameterlessConstructor()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public partial class Patch
+            {
+                public Patch(string name)
+                {
+                    Name = name;
+                }
+
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD012" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForRequiredPatchDtoMember()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public partial class Patch
+            {
+                public required string Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD013" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForIncompatibleConventionAssignment()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public int Count { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Count { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD014" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForIncompatiblePatchToAssignment()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public int Count { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchTo(nameof(Target.Count))]
+                public string? DisplayCount { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD014" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorForAbstractPatchDto()
+    {
+        var diagnostics = DiagnosticTestHelper.GetDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public abstract partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD015" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
