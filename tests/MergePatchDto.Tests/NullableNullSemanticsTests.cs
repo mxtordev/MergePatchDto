@@ -7,18 +7,18 @@ public class NullableNullSemanticsTests
     [Fact]
     public void ExplicitNullMarksPropertyProvided()
     {
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "termsAndConditionsUrl": null }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "description": null }""", JsonOptions.CamelCase)!;
 
-        Assert.True(patch.Has.TermsAndConditionsUrl);
-        Assert.Null(patch.TermsAndConditionsUrl);
+        Assert.True(patch.Has.Description);
+        Assert.Null(patch.Description);
     }
 
     [Fact]
     public void MissingNullablePropertyStaysUnprovidedEvenThoughValueIsNull()
     {
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "name": "NM 2026" }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "name": "New title" }""", JsonOptions.CamelCase)!;
 
-        Assert.False(patch.Has.TermsAndConditionsUrl);
-        Assert.Null(patch.TermsAndConditionsUrl);
+        Assert.False(patch.Has.Description);
+        Assert.Null(patch.Description);
     }
 }

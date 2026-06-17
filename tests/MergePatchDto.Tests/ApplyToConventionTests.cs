@@ -7,32 +7,32 @@ public class ApplyToConventionTests
     [Fact]
     public void ApplyToAssignsSameNamePropertyOnlyWhenProvided()
     {
-        var target = new Event
+        var target = new Document
         {
             Name = "Old",
-            TermsUrl = "old-url"
+            Summary = "old-url"
         };
 
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("""{ "name": "New" }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "name": "New" }""", JsonOptions.CamelCase)!;
 
         patch.ApplyTo(target);
 
         Assert.Equal("New", target.Name);
-        Assert.Equal("old-url", target.TermsUrl);
+        Assert.Equal("old-url", target.Summary);
         Assert.Equal(2, target.NameSetCount);
-        Assert.Equal(1, target.TermsUrlSetCount);
+        Assert.Equal(1, target.SummarySetCount);
     }
 
     [Fact]
     public void ApplyToDoesNotCallSetterForMissingProperty()
     {
-        var target = new Event
+        var target = new Document
         {
             Name = "Old"
         };
 
         var before = target.NameSetCount;
-        var patch = JsonSerializer.Deserialize<UpdateEventPatch>("{}")!;
+        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("{}")!;
 
         patch.ApplyTo(target);
 
@@ -44,13 +44,13 @@ public class ApplyToConventionTests
     public void PatchDtoCanGenerateMultipleTargetOverloads()
     {
         var patch = JsonSerializer.Deserialize<MultiTargetPatch>("""{ "Name": "Draft" }""")!;
-        var eventTarget = new Event();
-        var draftTarget = new EventDraft();
+        var documentTarget = new Document();
+        var draftTarget = new DocumentDraft();
 
-        patch.ApplyTo(eventTarget);
+        patch.ApplyTo(documentTarget);
         patch.ApplyTo(draftTarget);
 
-        Assert.Equal("Draft", eventTarget.Name);
+        Assert.Equal("Draft", documentTarget.Name);
         Assert.Equal("Draft", draftTarget.Name);
     }
 }

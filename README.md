@@ -8,46 +8,96 @@ It lets a PATCH endpoint distinguish:
 - explicit `null`: assign or clear the target value
 - explicit value: assign the target value
 
-Install the `MergePatchDto` package, define a normal partial DTO, and call `ApplyTo`.
+## Install
+
+```bash
+dotnet add package MergePatchDto
+```
+
+## Quick Start
+
+Define a partial patch DTO and point it at the type it updates:
 
 ```csharp
 using MergePatch;
 
-[MergePatch(typeof(Event))]
-public partial class UpdateEventPatch
+[MergePatch(typeof(Document))]
+public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
 
-    [PatchTo(nameof(Event.TermsUrl))]
-    public string? TermsAndConditionsUrl { get; set; }
+    [PatchTo(nameof(Document.Summary))]
+    public string? Description { get; set; }
 
     [PatchIgnore]
-    public string? ClientMutationId { get; set; }
+    public string? RequestId { get; set; }
 
-    [PatchUsing(nameof(ApplyCapacity))]
-    public int? MaxParticipants { get; set; }
+    [PatchUsing(nameof(ApplyPriority))]
+    public int? Priority { get; set; }
 
-    private static void ApplyCapacity(Event target, int? value)
+    private static void ApplyPriority(Document target, int? value)
     {
-        target.SetCapacity(value);
+        target.SetPriority(value);
     }
 }
 ```
 
-Use `[MergePatchTarget(typeof(OtherTarget))]` only when one patch DTO needs extra `ApplyTo` overloads.
+Use it directly in an endpoint:
 
-If you do not want generated target assignment, omit the target type. MergePatchDto will still generate the JSON converter and presence API, but it will not generate an untyped or reflection-based `ApplyTo`:
+```csharp
+public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
+{
+    var document = await db.Documents.FindAsync(id);
+    if (document is null)
+    {
+        return NotFound();
+    }
+
+    patch.ApplyTo(document);
+
+    await db.SaveChangesAsync();
+    return NoContent();
+}
+```
+
+`ApplyTo` only applies fields that were present in the JSON body. For example:
+
+```json
+{
+  "description": null
+}
+```
+
+This clears `Document.Summary` and leaves every omitted property unchanged.
+
+## Presence Checks
+
+The generated `Has` API stays useful when the update needs explicit domain logic:
+
+```csharp
+var has = patch.Has;
+
+if (has.Name) entity.Name = patch.Name;
+if (has.Description) entity.Summary = patch.Description;
+if (has.Priority) entity.SetPriority(patch.Priority);
+```
+
+## Targetless Patches
+
+If you only want JSON presence tracking, omit the target type:
 
 ```csharp
 using MergePatch;
 
 [MergePatch]
-public partial class UpdateEventPatch
+public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
-    public int? CapacityDelta { get; set; }
+    public int? PriorityDelta { get; set; }
 }
 ```
+
+MergePatchDto still generates the JSON converter and `Has` API. Add a target type when you want a typed generated `ApplyTo` method.
 
 ```csharp
 var has = patch.Has;
@@ -55,39 +105,42 @@ var has = patch.Has;
 if (has.Name)
     entity.Name = patch.Name;
 
-if (has.CapacityDelta)
-    entity.IncrementCapacity(patch.CapacityDelta.GetValueOrDefault());
+if (has.PriorityDelta)
+    entity.IncrementPriority(patch.PriorityDelta.GetValueOrDefault());
 ```
 
-Target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` are only validated and applied when the patch type has a target. On targetless patch types, those attributes produce a warning because they have no generated `ApplyTo` effect.
+## Mapping Rules
+
+By default, patch properties map to target properties with the same CLR name.
+
+- `[PatchTo(nameof(Target.OtherName))]` maps a patch property to a differently named target property.
+- `[PatchIgnore]` excludes client-only values from generated `ApplyTo`.
+- `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch property was provided.
+- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo` overload.
+
+Supported custom apply signatures are:
 
 ```csharp
-public async Task<IActionResult> Patch(Guid id, UpdateEventPatch patch)
-{
-    var ev = await db.Events.FindAsync(id);
-    if (ev is null)
-    {
-        return NotFound();
-    }
-
-    patch.ApplyTo(ev);
-
-    await db.SaveChangesAsync();
-    return NoContent();
-}
+private static void ApplyPriority(Document target, int? value)
+private static void ApplyPriority(UpdateDocumentPatch patch, Document target, int? value)
 ```
 
-Manual fallback stays compact:
+Target-specific mapping attributes have no effect on targetless patch types and produce a warning.
 
-```csharp
-var has = patch.Has;
+## JSON Behavior
 
-if (has.Name) entity.Name = patch.Name;
-if (has.Description) entity.Description = patch.Description;
-if (has.TermsAndConditionsUrl) entity.TermsUrl = patch.TermsAndConditionsUrl;
-```
+MergePatchDto generates a `System.Text.Json` converter for each patch DTO.
 
-The generated `System.Text.Json` converter tracks top-level JSON property presence, respects `JsonPropertyNameAttribute`, `JsonIgnoreAttribute`, and `JsonSerializerOptions.PropertyNamingPolicy`, and can reject unknown properties:
+The converter:
+
+- tracks top-level JSON property presence
+- stores presence by CLR property name
+- respects `JsonPropertyNameAttribute`
+- respects `JsonIgnoreAttribute`
+- respects `JsonSerializerOptions.PropertyNamingPolicy`
+- treats explicit `null` as provided
+
+Unknown JSON properties are ignored by default. To reject them:
 
 ```csharp
 [MergePatch(UnknownPropertyHandling = UnknownPropertyHandling.Reject)]
@@ -97,4 +150,25 @@ public partial class StrictPatch
 }
 ```
 
-Nested object patching is not a v1 feature. If a nested object property is present, MergePatchDto treats that object as a provided value and assigns or applies it according to the property mapping. Arrays are treated as replacement values, not partially merged.
+## Diagnostics
+
+Invalid patch shapes and mappings fail during build with MergePatchDto diagnostics.
+
+Common examples:
+
+- patch DTO class is not `partial`
+- target property does not exist
+- target property setter is not accessible
+- patch property type cannot be assigned to the target property type
+- `[PatchUsing]` method is missing or has an unsupported signature
+- a property combines conflicting mapping attributes
+
+## Limitations
+
+- Patch DTOs must be top-level, non-generic, non-abstract partial classes.
+- Patch DTOs need an accessible parameterless constructor.
+- `required` members are not supported.
+- Presence tracking is top-level only.
+- Nested objects are treated as provided values and assigned according to the property mapping.
+- Arrays are replacement values, not partial merges.
+- JSON Patch operation arrays, expression-tree mapping, wrapper properties, and DI-driven `ApplyTo` are not part of this package.

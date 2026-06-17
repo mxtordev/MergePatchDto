@@ -7,10 +7,10 @@ public class JsonIgnoreTests
     [Fact]
     public void ConverterIgnoresJsonIgnoredProperties()
     {
-        var patch = JsonSerializer.Deserialize<JsonIgnorePatch>("""{ "name": "Visible", "clientMutationId": "ignored" }""", JsonOptions.CamelCase)!;
+        var patch = JsonSerializer.Deserialize<JsonIgnorePatch>("""{ "name": "Visible", "requestId": "ignored" }""", JsonOptions.CamelCase)!;
 
         Assert.True(patch.Has.Name);
         Assert.Equal("Visible", patch.Name);
-        Assert.Null(patch.ClientMutationId);
+        Assert.Null(patch.RequestId);
     }
 }
