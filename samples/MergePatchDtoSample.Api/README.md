@@ -38,7 +38,7 @@ Generated `ApplyTo`, with same-name mapping, `JsonPropertyName`, `PatchTo`,
 `PatchIgnore`:
 
 ```bash
-curl -s -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/generated \
+curl -i -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/generated \
   -H 'content-type: application/json' \
   -d '{
     "name": "Ada Updated",
@@ -49,7 +49,13 @@ curl -s -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111
     "address": { "city": "Gothenburg", "country": "SE" },
     "skills": ["math", "api design"],
     "requestId": "seen-as-provided-but-not-applied"
-  }' | jq
+  }'
+```
+
+Fetch the person after a patch to inspect the updated state:
+
+```bash
+curl -s http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111 | jq
 ```
 
 Nested objects are replacement values. This updates the whole `Address`; because
@@ -58,34 +64,35 @@ Nested objects are replacement values. This updates the whole `Address`; because
 
 ```bash
 curl -s -X POST http://localhost:5275/api/people/reset >/dev/null && \
-curl -s -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/generated \
+curl -i -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/generated \
   -H 'content-type: application/json' \
   -d '{
     "address": { "city": "Gothenburg" }
-  }' | jq
+  }' && \
+curl -s http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111 | jq
 ```
 
 Targetless `[MergePatch]` with manual `Has` checks:
 
 ```bash
-curl -s -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/manual \
+curl -i -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/manual \
   -H 'content-type: application/json' \
   -d '{
     "isActive": false,
     "adminNote": "Disabled by support request"
-  }' | jq
+  }'
 ```
 
 Generated `ApplyTo` where the target type is an interface:
 
 ```bash
-curl -s -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/interface \
+curl -i -X PATCH http://localhost:5275/api/people/11111111-1111-1111-1111-111111111111/interface \
   -H 'content-type: application/json' \
   -d '{
     "name": "Updated through interface",
     "email": "updated@example.com",
     "phone": "+46 70 333 33 33"
-  }' | jq
+  }'
 ```
 
 Strict unknown-property rejection:

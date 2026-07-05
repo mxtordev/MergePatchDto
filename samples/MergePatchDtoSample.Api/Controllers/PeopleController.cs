@@ -30,7 +30,7 @@ public sealed class PeopleController(PersonStore people) : ControllerBase
     }
 
     [HttpPatch("{id:guid}/generated")]
-    public ActionResult<PatchResult> PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
+    public IActionResult PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
     {
         if (!people.TryGet(id, out var person))
         {
@@ -39,14 +39,11 @@ public sealed class PeopleController(PersonStore people) : ControllerBase
 
         patch.ApplyTo(person);
 
-        return Ok(new PatchResult(
-            "generated ApplyTo",
-            ProvidedFields(patch),
-            people.Snapshot(person)));
+        return NoContent();
     }
 
     [HttpPatch("{id:guid}/manual")]
-    public ActionResult<PatchResult> PatchWithManualPresenceLogic(Guid id, ManualPersonPatch patch)
+    public IActionResult PatchWithManualPresenceLogic(Guid id, ManualPersonPatch patch)
     {
         if (!people.TryGet(id, out var person))
         {
@@ -64,14 +61,11 @@ public sealed class PeopleController(PersonStore people) : ControllerBase
             person.AdminNote = patch.AdminNote;
         }
 
-        return Ok(new PatchResult(
-            "targetless Has checks",
-            ProvidedFields(patch),
-            people.Snapshot(person)));
+        return NoContent();
     }
 
     [HttpPatch("{id:guid}/interface")]
-    public ActionResult<PatchResult> PatchThroughInterfaceTarget(Guid id, InterfacePersonPatch patch)
+    public IActionResult PatchThroughInterfaceTarget(Guid id, InterfacePersonPatch patch)
     {
         if (!people.TryGet(id, out var person))
         {
@@ -81,14 +75,11 @@ public sealed class PeopleController(PersonStore people) : ControllerBase
         IEditablePersonProfile editable = person;
         patch.ApplyTo(editable);
 
-        return Ok(new PatchResult(
-            "generated ApplyTo through interface target",
-            ProvidedFields(patch),
-            people.Snapshot(person)));
+        return NoContent();
     }
 
     [HttpPatch("{id:guid}/strict")]
-    public ActionResult<PatchResult> PatchWithStrictUnknownProperties(Guid id, StrictPersonPatch patch)
+    public IActionResult PatchWithStrictUnknownProperties(Guid id, StrictPersonPatch patch)
     {
         if (!people.TryGet(id, out var person))
         {
@@ -97,62 +88,6 @@ public sealed class PeopleController(PersonStore people) : ControllerBase
 
         patch.ApplyTo(person);
 
-        return Ok(new PatchResult(
-            "generated ApplyTo with unknown-property rejection",
-            ProvidedFields(patch),
-            people.Snapshot(person)));
-    }
-
-    private static string[] ProvidedFields(UpdatePersonPatch patch)
-    {
-        var fields = new List<string>();
-        var has = patch.Has;
-
-        if (has.Name) fields.Add(nameof(patch.Name));
-        if (has.Email) fields.Add(nameof(patch.Email));
-        if (has.Phone) fields.Add(nameof(patch.Phone));
-        if (has.Bio) fields.Add(nameof(patch.Bio));
-        if (has.Age) fields.Add(nameof(patch.Age));
-        if (has.Address) fields.Add(nameof(patch.Address));
-        if (has.Skills) fields.Add(nameof(patch.Skills));
-        if (has.RequestId) fields.Add(nameof(patch.RequestId));
-
-        return [.. fields];
-    }
-
-    private static string[] ProvidedFields(ManualPersonPatch patch)
-    {
-        var fields = new List<string>();
-        var has = patch.Has;
-
-        if (has.IsActive) fields.Add(nameof(patch.IsActive));
-        if (has.AdminNote) fields.Add(nameof(patch.AdminNote));
-
-        return [.. fields];
-    }
-
-    private static string[] ProvidedFields(InterfacePersonPatch patch)
-    {
-        var fields = new List<string>();
-        var has = patch.Has;
-
-        if (has.Name) fields.Add(nameof(patch.Name));
-        if (has.Email) fields.Add(nameof(patch.Email));
-        if (has.Phone) fields.Add(nameof(patch.Phone));
-
-        return [.. fields];
-    }
-
-    private static string[] ProvidedFields(StrictPersonPatch patch)
-    {
-        var fields = new List<string>();
-        var has = patch.Has;
-
-        if (has.Name) fields.Add(nameof(patch.Name));
-        if (has.Email) fields.Add(nameof(patch.Email));
-
-        return [.. fields];
+        return NoContent();
     }
 }
-
-public sealed record PatchResult(string Mode, string[] ProvidedFields, Person Person);
