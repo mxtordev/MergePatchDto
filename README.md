@@ -36,7 +36,7 @@ Define a partial patch DTO and point it at the type it updates:
 
 ```csharp
 using MergePatch;
-using MergePatchDtoSample.Api.Models;
+using YourApi.Models;
 
 [MergePatch(typeof(Person))]
 public partial class UpdatePersonPatch
@@ -47,17 +47,25 @@ public partial class UpdatePersonPatch
 }
 ```
 
-Use it directly in an endpoint:
+Use it in a normal PATCH endpoint after loading the entity being updated:
 
 ```csharp
-public IActionResult PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
+[HttpPatch("{id:guid}")]
+public async Task<IActionResult> PatchPerson(
+    Guid id,
+    UpdatePersonPatch patch,
+    CancellationToken cancellationToken)
 {
-    if (!people.TryGet(id, out var person))
+    var person = await db.People.FindAsync([id], cancellationToken);
+
+    if (person is null)
     {
         return NotFound();
     }
 
     patch.ApplyTo(person);
+
+    await db.SaveChangesAsync(cancellationToken);
 
     return NoContent();
 }
@@ -76,7 +84,7 @@ This clears `Person.Bio` and leaves every omitted property unchanged.
 Use C# nullability to model whether a field may be set to `null`; presence is
 tracked separately through the generated `Has` API. A property does not need to
 be nullable just to be optional in the request body. Omitted fields are skipped
-because `Has` is false. The sample patch uses nullable properties where the API
+because `Has` is false. This patch DTO uses nullable properties where the API
 accepts explicit clearing.
 
 For renamed target properties, accepted client metadata, or domain-specific
