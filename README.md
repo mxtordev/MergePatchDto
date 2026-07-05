@@ -174,8 +174,6 @@ If a target property should not be patchable, leave it off the DTO.
   deserialized and presence-tracked, but excluded from generated `ApplyTo`.
 - `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch
   property was provided.
-- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo`
-  overload.
 - Targets can be interfaces. In that case, generated `ApplyTo` accepts the interface and maps only members declared on that interface.
 
 ```csharp

@@ -96,8 +96,7 @@ public class DiagnosticsTests
             """
             using MergePatch;
 
-            [MergePatch]
-            [MergePatchTarget(typeof(MissingTarget))]
+            [MergePatch(typeof(MissingTarget))]
             public partial class Patch
             {
                 public string? Name { get; set; }
@@ -120,32 +119,6 @@ public class DiagnosticsTests
             }
 
             [MergePatch(typeof(Box<>))]
-            public partial class Patch
-            {
-                public string? Name { get; set; }
-            }
-            """);
-
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD018" && diagnostic.Severity == DiagnosticSeverity.Error);
-        Assert.DoesNotContain(diagnostics, diagnostic =>
-            diagnostic.Severity == DiagnosticSeverity.Error &&
-            !diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void ReportsErrorWhenAdditionalPatchTargetIsOpenGeneric()
-    {
-        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
-            """
-            using MergePatch;
-
-            public class Box<T>
-            {
-                public string? Name { get; set; }
-            }
-
-            [MergePatch]
-            [MergePatchTarget(typeof(Box<>))]
             public partial class Patch
             {
                 public string? Name { get; set; }
