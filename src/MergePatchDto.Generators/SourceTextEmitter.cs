@@ -705,7 +705,137 @@ namespace MergePatchDto.Generators
         private static bool CanAssign(Compilation compilation, ITypeSymbol sourceType, ITypeSymbol targetType)
         {
             var conversion = compilation.ClassifyConversion(sourceType, targetType);
-            return conversion.IsImplicit;
+            return conversion.IsImplicit && CanAssignNullability(sourceType, targetType);
+        }
+
+        private static bool CanAssignNullability(ITypeSymbol sourceType, ITypeSymbol targetType)
+        {
+            return CanAssignNullability(
+                sourceType,
+                sourceType.NullableAnnotation,
+                targetType,
+                targetType.NullableAnnotation);
+        }
+
+        private static bool CanAssignNullability(
+            ITypeSymbol sourceType,
+            NullableAnnotation sourceAnnotation,
+            ITypeSymbol targetType,
+            NullableAnnotation targetAnnotation)
+        {
+            if (CanBeNull(sourceType, sourceAnnotation) && !CanAcceptNull(targetType, targetAnnotation))
+            {
+                return false;
+            }
+
+            if (sourceType is IArrayTypeSymbol sourceArray && targetType is IArrayTypeSymbol targetArray)
+            {
+                return CanAssignNullability(sourceArray.ElementType, targetArray.ElementType);
+            }
+
+            if (targetType is INamedTypeSymbol targetNamed)
+            {
+                var sourceNamed = FindAssignableSourceTypeArgumentShape(sourceType, targetNamed);
+                if (sourceNamed != null && !CanAssignTypeArgumentNullability(sourceNamed, targetNamed))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool CanAssignTypeArgumentNullability(INamedTypeSymbol sourceType, INamedTypeSymbol targetType)
+        {
+            if (!targetType.IsGenericType)
+            {
+                return true;
+            }
+
+            if (sourceType.TypeArguments.Length != targetType.TypeArguments.Length)
+            {
+                return true;
+            }
+
+            for (var i = 0; i < sourceType.TypeArguments.Length; i++)
+            {
+                if (!CanAssignNullability(
+                    sourceType.TypeArguments[i],
+                    GetTypeArgumentNullableAnnotation(sourceType, i),
+                    targetType.TypeArguments[i],
+                    GetTypeArgumentNullableAnnotation(targetType, i)))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static INamedTypeSymbol? FindAssignableSourceTypeArgumentShape(ITypeSymbol sourceType, INamedTypeSymbol targetType)
+        {
+            if (!targetType.IsGenericType)
+            {
+                return null;
+            }
+
+            if (sourceType is INamedTypeSymbol sourceNamed)
+            {
+                for (var current = sourceNamed; current != null; current = current.BaseType)
+                {
+                    if (IsSameOriginalDefinition(current, targetType))
+                    {
+                        return current;
+                    }
+                }
+            }
+
+            foreach (var interfaceType in sourceType.AllInterfaces)
+            {
+                if (IsSameOriginalDefinition(interfaceType, targetType))
+                {
+                    return interfaceType;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool CanBeNull(ITypeSymbol type, NullableAnnotation annotation)
+        {
+            return IsNullableValueType(type) || (!type.IsValueType && annotation == NullableAnnotation.Annotated);
+        }
+
+        private static bool CanAcceptNull(ITypeSymbol type, NullableAnnotation annotation)
+        {
+            if (IsNullableValueType(type))
+            {
+                return true;
+            }
+
+            return !type.IsValueType && annotation != NullableAnnotation.NotAnnotated;
+        }
+
+        private static bool IsNullableValueType(ITypeSymbol type)
+        {
+            return type is INamedTypeSymbol namedType
+                && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
+        }
+
+        private static bool IsSameOriginalDefinition(INamedTypeSymbol left, INamedTypeSymbol right)
+        {
+            return SymbolEqualityComparer.Default.Equals(left.OriginalDefinition, right.OriginalDefinition);
+        }
+
+        private static NullableAnnotation GetTypeArgumentNullableAnnotation(INamedTypeSymbol type, int index)
+        {
+            var annotations = type.TypeArgumentNullableAnnotations;
+            if (annotations.IsDefaultOrEmpty || index >= annotations.Length)
+            {
+                return type.TypeArguments[index].NullableAnnotation;
+            }
+
+            return annotations[index];
         }
 
         private static string ToTypeName(ITypeSymbol symbol)
