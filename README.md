@@ -40,7 +40,7 @@ using MergePatch;
 [MergePatch(typeof(Document))]
 public partial class UpdateDocumentPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
     public string? Summary { get; set; }
 }
 ```
@@ -73,6 +73,11 @@ public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
 
 This clears `Document.Summary` and leaves every omitted property unchanged.
 
+Use C# nullability to model whether a field may be set to `null`; presence is
+tracked separately through the generated `Has` API. In the example above,
+`Name` is non-nullable, while `Summary` can be cleared with an explicit
+`null`.
+
 For renamed target properties, accepted client metadata, or domain-specific
 update methods, use the mapping attributes described below.
 
@@ -87,7 +92,7 @@ The patch DTO is the allowlist. Properties that are not on the patch DTO are not
 [MergePatch(typeof(Document))]
 public partial class UpdateDocumentPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
     public string? Description { get; set; }
 }
 ```
@@ -137,8 +142,8 @@ using MergePatch;
 [MergePatch]
 public partial class UpdateDocumentPatch
 {
-    public string? Name { get; set; }
-    public int? PriorityDelta { get; set; }
+    public string Name { get; set; } = "";
+    public int PriorityDelta { get; set; }
 }
 ```
 
@@ -151,7 +156,7 @@ if (has.Name)
     entity.Name = patch.Name;
 
 if (has.PriorityDelta)
-    entity.IncrementPriority(patch.PriorityDelta.GetValueOrDefault());
+    entity.IncrementPriority(patch.PriorityDelta);
 ```
 
 Add a target type when you want a typed generated `ApplyTo` method.
