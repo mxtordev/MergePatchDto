@@ -314,7 +314,7 @@ namespace MergePatchDto.Generators
                 ToTypeName(property.Type),
                 property.SetMethod?.IsInitOnly == true,
                 JsonNameResolver.GetJsonPropertyName(property),
-                GetJsonConverterTypeName(property),
+                HasJsonConverterAttribute(property),
                 GetJsonNumberHandling(property),
                 hasPatchIgnore,
                 patchToTargetName,
@@ -322,23 +322,33 @@ namespace MergePatchDto.Generators
                 property.Locations.FirstOrDefault());
         }
 
-        private static string? GetJsonConverterTypeName(IPropertySymbol property)
+        private static bool HasJsonConverterAttribute(IPropertySymbol property)
         {
             foreach (var attribute in property.GetAttributes())
             {
-                if (!JsonNameResolver.IsAttribute(attribute, JsonNameResolver.JsonConverterAttributeName))
+                if (IsJsonConverterAttribute(attribute))
                 {
-                    continue;
-                }
-
-                if (attribute.ConstructorArguments.Length == 1 &&
-                    attribute.ConstructorArguments[0].Value is ITypeSymbol converterType)
-                {
-                    return ToTypeName(converterType);
+                    return true;
                 }
             }
 
-            return null;
+            return false;
+        }
+
+        private static bool IsJsonConverterAttribute(AttributeData attribute)
+        {
+            var attributeClass = attribute.AttributeClass;
+            while (attributeClass != null)
+            {
+                if (attributeClass.ToDisplayString() == JsonNameResolver.JsonConverterAttributeName)
+                {
+                    return true;
+                }
+
+                attributeClass = attributeClass.BaseType;
+            }
+
+            return false;
         }
 
         private static int? GetJsonNumberHandling(IPropertySymbol property)

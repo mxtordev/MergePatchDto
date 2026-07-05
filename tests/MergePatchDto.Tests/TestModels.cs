@@ -170,6 +170,45 @@ public sealed class PrefixStringConverter : JsonConverter<string?>
     }
 }
 
+public sealed class StatefulStringConverterAttribute : JsonConverterAttribute
+{
+    private readonly string _readPrefix;
+    private readonly string _writePrefix;
+
+    public StatefulStringConverterAttribute(string readPrefix, string writePrefix)
+    {
+        _readPrefix = readPrefix;
+        _writePrefix = writePrefix;
+    }
+
+    public override JsonConverter? CreateConverter(Type typeToConvert)
+    {
+        return new StatefulStringConverter(_readPrefix, _writePrefix);
+    }
+}
+
+public sealed class StatefulStringConverter : JsonConverter<string?>
+{
+    private readonly string _readPrefix;
+    private readonly string _writePrefix;
+
+    public StatefulStringConverter(string readPrefix, string writePrefix)
+    {
+        _readPrefix = readPrefix;
+        _writePrefix = writePrefix;
+    }
+
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return _readPrefix + reader.GetString();
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(_writePrefix + value);
+    }
+}
+
 public enum PropertyMetadataStatus
 {
     Draft,
@@ -181,6 +220,9 @@ public partial class PropertyMetadataPatch
 {
     [JsonConverter(typeof(PrefixStringConverter))]
     public string? Code { get; set; }
+
+    [StatefulStringConverter("state-read:", "state-write:")]
+    public string? StatefulCode { get; set; }
 
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     public int Count { get; set; }

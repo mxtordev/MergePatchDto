@@ -25,6 +25,25 @@ public class JsonPropertyMetadataTests
     }
 
     [Fact]
+    public void ConverterUsesDerivedPropertyLevelJsonConverterAttributeOnRead()
+    {
+        var patch = JsonSerializer.Deserialize<PropertyMetadataPatch>("""{ "statefulCode": "abc" }""", JsonOptions.CamelCase)!;
+
+        Assert.True(patch.Has.StatefulCode);
+        Assert.Equal("state-read:abc", patch.StatefulCode);
+    }
+
+    [Fact]
+    public void ConverterUsesDerivedPropertyLevelJsonConverterAttributeOnWrite()
+    {
+        var patch = JsonSerializer.Deserialize<PropertyMetadataPatch>("""{ "statefulCode": "abc" }""", JsonOptions.CamelCase)!;
+
+        var json = JsonSerializer.Serialize(patch, JsonOptions.CamelCase);
+
+        Assert.Contains(""""statefulCode":"state-write:state-read:abc"""", json);
+    }
+
+    [Fact]
     public void ConverterUsesPropertyLevelJsonNumberHandlingOnRead()
     {
         var patch = JsonSerializer.Deserialize<PropertyMetadataPatch>("""{ "count": "12" }""", JsonOptions.CamelCase)!;

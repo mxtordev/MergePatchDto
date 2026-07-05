@@ -10,7 +10,7 @@ namespace MergePatchDto.Generators
             string typeName,
             bool isInitOnly,
             string? explicitJsonName,
-            string? jsonConverterTypeName,
+            bool hasJsonConverterAttribute,
             int? jsonNumberHandling,
             bool hasPatchIgnore,
             string? patchToTargetName,
@@ -22,7 +22,7 @@ namespace MergePatchDto.Generators
             TypeName = typeName;
             IsInitOnly = isInitOnly;
             ExplicitJsonName = explicitJsonName;
-            JsonConverterTypeName = jsonConverterTypeName;
+            HasJsonConverterAttribute = hasJsonConverterAttribute;
             JsonNumberHandling = jsonNumberHandling;
             HasPatchIgnore = hasPatchIgnore;
             PatchToTargetName = patchToTargetName;
@@ -40,11 +40,11 @@ namespace MergePatchDto.Generators
 
         public string? ExplicitJsonName { get; }
 
-        public string? JsonConverterTypeName { get; }
+        public bool HasJsonConverterAttribute { get; }
 
         public int? JsonNumberHandling { get; }
 
-        public bool HasPropertyJsonOptions => JsonConverterTypeName != null || JsonNumberHandling.HasValue;
+        public bool HasPropertyJsonOptions => HasJsonConverterAttribute || JsonNumberHandling.HasValue;
 
         public bool HasPatchIgnore { get; }
 
