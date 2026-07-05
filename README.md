@@ -122,6 +122,10 @@ The target type lets MergePatchDto generate typed mapping:
 patch.ApplyTo(person);
 ```
 
+If the same patch shape should apply to multiple concrete types, target a
+shared interface. Generated `ApplyTo` accepts the interface and maps only
+members declared on that interface.
+
 It does not mean every property on `Person` is patchable. The DTO remains the boundary.
 
 ## Manual Updates
@@ -174,9 +178,7 @@ If a target property should not be patchable, leave it off the DTO.
   deserialized and presence-tracked, but excluded from generated `ApplyTo`.
 - `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch
   property was provided.
-- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo`
-  overload.
-- Targets can be interfaces. In that case, generated `ApplyTo` accepts the interface and maps only members declared on that interface.
+- Targets can be interfaces.
 
 ```csharp
 [MergePatch(typeof(Person))]

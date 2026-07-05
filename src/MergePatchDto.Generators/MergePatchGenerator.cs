@@ -12,7 +12,6 @@ namespace MergePatchDto.Generators
     public sealed class MergePatchGenerator : IIncrementalGenerator
     {
         private const string MergePatchAttributeName = "MergePatch.MergePatchAttribute";
-        private const string MergePatchTargetAttributeName = "MergePatch.MergePatchTargetAttribute";
         private const string PatchIgnoreAttributeName = "MergePatch.PatchIgnoreAttribute";
         private const string PatchToAttributeName = "MergePatch.PatchToAttribute";
         private const string PatchUsingAttributeName = "MergePatch.PatchUsingAttribute";
@@ -382,14 +381,9 @@ namespace MergePatchDto.Generators
 
             var patchDtoAttribute = context.Attributes.FirstOrDefault(attribute => IsAttribute(attribute, MergePatchAttributeName));
 
-            var targetAttributes = typeSymbol
-                .GetAttributes()
-                .Where(attribute => IsAttribute(attribute, MergePatchTargetAttributeName))
-                .ToArray();
-
-            var targetDeclarations = targetAttributes
-                .Concat(patchDtoAttribute == null ? Enumerable.Empty<AttributeData>() : new[] { patchDtoAttribute })
-                .ToArray();
+            var targetDeclarations = patchDtoAttribute == null
+                ? Enumerable.Empty<AttributeData>()
+                : new[] { patchDtoAttribute };
 
             var targets = targetDeclarations
                 .Select(BuildTargetModel)

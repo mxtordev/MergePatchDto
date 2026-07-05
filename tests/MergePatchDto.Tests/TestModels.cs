@@ -71,11 +71,6 @@ public sealed class Document
     }
 }
 
-public sealed class DocumentDraft
-{
-    public string? Name { get; set; }
-}
-
 public interface INamedResource
 {
     string? Name { get; set; }
@@ -118,14 +113,6 @@ public partial class UpdateDocumentPatch
     {
         target.SetPriority(value);
     }
-}
-
-[MergePatch]
-[MergePatchTarget(typeof(Document))]
-[MergePatchTarget(typeof(DocumentDraft))]
-public partial class MultiTargetPatch
-{
-    public string? Name { get; set; }
 }
 
 [MergePatch(typeof(INamedResource))]

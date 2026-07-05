@@ -41,20 +41,6 @@ public class ApplyToConventionTests
     }
 
     [Fact]
-    public void PatchDtoCanGenerateMultipleTargetOverloads()
-    {
-        var patch = JsonSerializer.Deserialize<MultiTargetPatch>("""{ "Name": "Draft" }""")!;
-        var documentTarget = new Document();
-        var draftTarget = new DocumentDraft();
-
-        patch.ApplyTo(documentTarget);
-        patch.ApplyTo(draftTarget);
-
-        Assert.Equal("Draft", documentTarget.Name);
-        Assert.Equal("Draft", draftTarget.Name);
-    }
-
-    [Fact]
     public void PatchDtoCanTargetInterfaceImplementedByMultipleClasses()
     {
         var patch = JsonSerializer.Deserialize<InterfaceTargetPatch>("""{ "Name": "Shared" }""")!;
