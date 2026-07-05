@@ -20,7 +20,7 @@ namespace MergePatchDto.Generators
         {
             var patchDtos = context.SyntaxProvider.ForAttributeWithMetadataName(
                 MergePatchAttributeName,
-                static (node, _) => node is ClassDeclarationSyntax,
+                static (node, _) => IsPatchDtoCandidate(node),
                 static (syntaxContext, _) => BuildModel(syntaxContext))
                 .Where(static model => model != null);
 
@@ -32,6 +32,15 @@ namespace MergePatchDto.Generators
                 var compilation = item.Right;
                 if (model == null)
                 {
+                    return;
+                }
+
+                if (model.IsRecordClass)
+                {
+                    sourceContext.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.RecordPatchDtoNotSupported,
+                        model.Location,
+                        model.TypeSymbol.Name));
                     return;
                 }
 
@@ -55,6 +64,11 @@ namespace MergePatchDto.Generators
                         Diagnostics.PatchTargetCannotBeResolved,
                         location,
                         model.TypeSymbol.Name));
+                }
+
+                if (ReportOpenGenericTargets(sourceContext, model))
+                {
+                    return;
                 }
 
                 if (ReportGeneratedPublicMemberConflicts(sourceContext, model))
@@ -133,6 +147,23 @@ namespace MergePatchDto.Generators
                         field.Name));
                     hasErrors = true;
                 }
+            }
+
+            return hasErrors;
+        }
+
+        private static bool ReportOpenGenericTargets(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+
+            foreach (var target in model.OpenGenericTargets)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.OpenGenericPatchTargetNotSupported,
+                    target.Location,
+                    ToDiagnosticTypeName(target.TargetType),
+                    model.TypeSymbol.Name));
+                hasErrors = true;
             }
 
             return hasErrors;
@@ -226,11 +257,16 @@ namespace MergePatchDto.Generators
             }
         }
 
+        private static bool IsPatchDtoCandidate(SyntaxNode node)
+        {
+            return node is ClassDeclarationSyntax || node is RecordDeclarationSyntax;
+        }
+
         private static PatchDtoModel? BuildModel(GeneratorAttributeSyntaxContext context)
         {
             var typeSymbol = context.TargetSymbol as INamedTypeSymbol;
-            var classDeclaration = context.TargetNode as ClassDeclarationSyntax;
-            if (typeSymbol == null || classDeclaration == null)
+            var typeDeclaration = context.TargetNode as TypeDeclarationSyntax;
+            if (typeSymbol == null || typeDeclaration == null || typeSymbol.TypeKind != TypeKind.Class)
             {
                 return null;
             }
@@ -250,8 +286,11 @@ namespace MergePatchDto.Generators
                 .Where(attribute => IsAttribute(attribute, MergePatchTargetAttributeName))
                 .ToArray();
 
-            var targets = targetAttributes
+            var targetDeclarations = targetAttributes
                 .Concat(patchDtoAttribute == null ? Enumerable.Empty<AttributeData>() : new[] { patchDtoAttribute })
+                .ToArray();
+
+            var targets = targetDeclarations
                 .Select(BuildTargetModel)
                 .Where(target => target != null)
                 .Cast<PatchTargetModel>()
@@ -259,10 +298,14 @@ namespace MergePatchDto.Generators
                 .Select(group => group.First())
                 .ToImmutableArray();
 
-            var unresolvedTargets = targetAttributes
-                .Concat(patchDtoAttribute == null ? Enumerable.Empty<AttributeData>() : new[] { patchDtoAttribute })
-                .Where(HasTargetConstructorArgument)
-                .Where(attribute => BuildTargetModel(attribute) == null)
+            var openGenericTargets = targetDeclarations
+                .Select(BuildOpenGenericTargetModel)
+                .Where(target => target != null)
+                .Cast<PatchTargetModel>()
+                .ToImmutableArray();
+
+            var unresolvedTargets = targetDeclarations
+                .Where(IsUnresolvedTarget)
                 .Select(attribute => attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation())
                 .Where(location => location != null)
                 .Cast<Location>()
@@ -274,12 +317,14 @@ namespace MergePatchDto.Generators
                 GetNamespace(typeSymbol),
                 GetTypeName(typeSymbol),
                 GetAccessibility(typeSymbol.DeclaredAccessibility),
-                IsPartial(typeSymbol, classDeclaration),
+                typeDeclaration is RecordDeclarationSyntax,
+                IsPartial(typeSymbol, typeDeclaration),
                 HasRejectUnknownPropertyHandling(patchDtoAttribute),
                 properties,
                 targets,
+                openGenericTargets,
                 unresolvedTargets,
-                classDeclaration.Identifier.GetLocation());
+                typeDeclaration.Identifier.GetLocation());
         }
 
         private static PatchPropertyModel BuildPropertyModel(IPropertySymbol property)
@@ -372,18 +417,79 @@ namespace MergePatchDto.Generators
 
         private static PatchTargetModel? BuildTargetModel(AttributeData attribute)
         {
-            if (!HasTargetConstructorArgument(attribute))
-            {
-                return null;
-            }
-
-            var targetType = attribute.ConstructorArguments[0].Value as INamedTypeSymbol;
-            if (targetType == null || targetType.TypeKind == TypeKind.Error)
+            var targetType = GetTargetType(attribute);
+            if (targetType == null ||
+                targetType.TypeKind == TypeKind.Error ||
+                IsOpenGenericTarget(targetType))
             {
                 return null;
             }
 
             return new PatchTargetModel(targetType, attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation());
+        }
+
+        private static PatchTargetModel? BuildOpenGenericTargetModel(AttributeData attribute)
+        {
+            var targetType = GetTargetType(attribute);
+            if (targetType == null ||
+                targetType.TypeKind == TypeKind.Error ||
+                !IsOpenGenericTarget(targetType))
+            {
+                return null;
+            }
+
+            return new PatchTargetModel(targetType, attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation());
+        }
+
+        private static bool IsUnresolvedTarget(AttributeData attribute)
+        {
+            if (!HasTargetConstructorArgument(attribute))
+            {
+                return false;
+            }
+
+            var targetType = GetTargetType(attribute);
+            return targetType == null || targetType.TypeKind == TypeKind.Error;
+        }
+
+        private static INamedTypeSymbol? GetTargetType(AttributeData attribute)
+        {
+            if (!HasTargetConstructorArgument(attribute))
+            {
+                return null;
+            }
+
+            return attribute.ConstructorArguments[0].Value as INamedTypeSymbol;
+        }
+
+        private static bool IsOpenGenericTarget(INamedTypeSymbol targetType)
+        {
+            return targetType.IsUnboundGenericType || targetType.TypeArguments.Any(ContainsTypeParameter);
+        }
+
+        private static bool ContainsTypeParameter(ITypeSymbol type)
+        {
+            if (type.TypeKind == TypeKind.TypeParameter)
+            {
+                return true;
+            }
+
+            if (type is INamedTypeSymbol namedType)
+            {
+                return namedType.IsUnboundGenericType || namedType.TypeArguments.Any(ContainsTypeParameter);
+            }
+
+            if (type is IArrayTypeSymbol arrayType)
+            {
+                return ContainsTypeParameter(arrayType.ElementType);
+            }
+
+            if (type is IPointerTypeSymbol pointerType)
+            {
+                return ContainsTypeParameter(pointerType.PointedAtType);
+            }
+
+            return false;
         }
 
         private static bool HasTargetConstructorArgument(AttributeData attribute)
@@ -405,7 +511,7 @@ namespace MergePatchDto.Generators
                    property.SetMethod.DeclaredAccessibility == Accessibility.Public;
         }
 
-        private static bool IsPartial(INamedTypeSymbol symbol, ClassDeclarationSyntax currentDeclaration)
+        private static bool IsPartial(INamedTypeSymbol symbol, TypeDeclarationSyntax currentDeclaration)
         {
             if (currentDeclaration.Modifiers.Any(SyntaxKind.PartialKeyword))
             {
@@ -414,7 +520,7 @@ namespace MergePatchDto.Generators
 
             foreach (var syntaxReference in symbol.DeclaringSyntaxReferences)
             {
-                var syntax = syntaxReference.GetSyntax() as ClassDeclarationSyntax;
+                var syntax = syntaxReference.GetSyntax() as TypeDeclarationSyntax;
                 if (syntax != null && syntax.Modifiers.Any(SyntaxKind.PartialKeyword))
                 {
                     return true;
@@ -506,6 +612,11 @@ namespace MergePatchDto.Generators
                     SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
                     SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
                     SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier));
+        }
+
+        private static string ToDiagnosticTypeName(ITypeSymbol symbol)
+        {
+            return symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
         }
     }
 }
