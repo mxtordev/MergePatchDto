@@ -6,8 +6,15 @@
     <IsPackable>true</IsPackable>
     <PackageId>MergePatchDto</PackageId>
     <Description>Source-generated DTO presence tracking for merge-patch-style ASP.NET Core endpoints.</Description>
-    <Authors>MergePatchDto</Authors>
+    <Authors>mxtordev</Authors>
+    <Copyright>Copyright (c) 2026 mxtordev</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/mxtordev/MergePatchDto</PackageProjectUrl>
+    <PackageTags>merge-patch;json-merge-patch;aspnetcore;dto;source-generator;system-text-json</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/mxtordev/MergePatchDto</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);AddGeneratorToPackage</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
 
