@@ -70,10 +70,10 @@ namespace MergePatchDto.Generators
 
         public static readonly DiagnosticDescriptor TargetlessMappingAttributeIgnored = new DiagnosticDescriptor(
             "MPD009",
-            "Targetless patch property has ignored mapping attributes",
-            "Patch property '{0}' uses {1}, but targetless merge patch types do not generate ApplyTo; the attribute is ignored",
+            "Targetless patch property has target-specific mapping attributes",
+            "Patch property '{0}' uses {1}, but targetless merge patch types do not generate ApplyTo; add a target type or remove the target-specific attribute",
             "MergePatchDto",
-            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
         public static readonly DiagnosticDescriptor GenericPatchDtoNotSupported = new DiagnosticDescriptor(
