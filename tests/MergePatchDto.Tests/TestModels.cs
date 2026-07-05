@@ -145,6 +145,28 @@ public partial class PresenceOnlyPatch
 }
 
 [MergePatch]
+public partial class NonNullableReferencePatch
+{
+    public string Name { get; set; } = "";
+}
+
+[MergePatch]
+public partial class NullableReferencePatch
+{
+    public string? Name { get; set; }
+}
+
+#nullable disable
+
+[MergePatch]
+public partial class ObliviousReferencePatch
+{
+    public string Name { get; set; }
+}
+
+#nullable restore
+
+[MergePatch]
 public partial class JsonNamingPatch
 {
     public string? DisplayName { get; set; }

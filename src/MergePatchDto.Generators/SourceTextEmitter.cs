@@ -410,6 +410,19 @@ namespace MergePatchDto.Generators
                 builder.Append(indent).AppendLine("            }");
 
                 var deserializeExpression = "global::System.Text.Json.JsonSerializer.Deserialize<" + property.TypeName + ">(ref reader, " + GetJsonOptionsExpression(property, "options", generatedNames) + ")";
+                if (property.RejectsExplicitNull)
+                {
+                    builder.Append(indent).AppendLine("            if (reader.TokenType == global::System.Text.Json.JsonTokenType.Null)");
+                    builder.Append(indent).AppendLine("            {");
+                    builder.Append(indent)
+                        .Append("                throw new global::System.Text.Json.JsonException(")
+                        .Append(ToLiteral("Patch property '" + property.Name + "' does not allow JSON null."))
+                        .AppendLine(");");
+                    builder.Append(indent).AppendLine("            }");
+
+                    deserializeExpression = "(" + deserializeExpression + ")!";
+                }
+
                 if (property.IsInitOnly)
                 {
                     builder.Append(indent)
@@ -794,7 +807,7 @@ namespace MergePatchDto.Generators
             {
                 return HasOnlyValueParameters(method) &&
                        IsSameType(method.Parameters[0].Type, target.TargetType) &&
-                       IsSameType(method.Parameters[1].Type, property.Symbol.Type);
+                       CanPassPatchUsingValue(property.Symbol.Type, method.Parameters[1].Type);
             }
 
             if (method.Parameters.Length == 3)
@@ -802,10 +815,16 @@ namespace MergePatchDto.Generators
                 return HasOnlyValueParameters(method) &&
                        IsSameType(method.Parameters[0].Type, model.TypeSymbol) &&
                        IsSameType(method.Parameters[1].Type, target.TargetType) &&
-                       IsSameType(method.Parameters[2].Type, property.Symbol.Type);
+                       CanPassPatchUsingValue(property.Symbol.Type, method.Parameters[2].Type);
             }
 
             return false;
+        }
+
+        private static bool CanPassPatchUsingValue(ITypeSymbol patchValueType, ITypeSymbol parameterType)
+        {
+            return IsSameType(patchValueType, parameterType) &&
+                   CanAssignNullability(patchValueType, parameterType);
         }
 
         private static bool HasOnlyValueParameters(IMethodSymbol method)

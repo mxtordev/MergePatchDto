@@ -12,6 +12,7 @@ namespace MergePatchDto.Generators
             string? explicitJsonName,
             bool hasJsonConverterAttribute,
             int? jsonNumberHandling,
+            bool rejectsExplicitNull,
             bool hasPatchIgnore,
             string? patchToTargetName,
             string? patchUsingMethodName,
@@ -24,6 +25,7 @@ namespace MergePatchDto.Generators
             ExplicitJsonName = explicitJsonName;
             HasJsonConverterAttribute = hasJsonConverterAttribute;
             JsonNumberHandling = jsonNumberHandling;
+            RejectsExplicitNull = rejectsExplicitNull;
             HasPatchIgnore = hasPatchIgnore;
             PatchToTargetName = patchToTargetName;
             PatchUsingMethodName = patchUsingMethodName;
@@ -45,6 +47,8 @@ namespace MergePatchDto.Generators
         public int? JsonNumberHandling { get; }
 
         public bool HasPropertyJsonOptions => HasJsonConverterAttribute || JsonNumberHandling.HasValue;
+
+        public bool RejectsExplicitNull { get; }
 
         public bool HasPatchIgnore { get; }
 

@@ -5,12 +5,28 @@ namespace MergePatchDto.Tests;
 public class NullableNullSemanticsTests
 {
     [Fact]
-    public void ExplicitNullMarksPropertyProvided()
+    public void ExplicitNullForNonNullableReferenceThrows()
     {
-        var patch = JsonSerializer.Deserialize<UpdateDocumentPatch>("""{ "description": null }""", JsonOptions.CamelCase)!;
+        Assert.Throws<JsonException>(() =>
+            JsonSerializer.Deserialize<NonNullableReferencePatch>("""{ "name": null }""", JsonOptions.CamelCase));
+    }
 
-        Assert.True(patch.Has.Description);
-        Assert.Null(patch.Description);
+    [Fact]
+    public void ExplicitNullForNullableReferenceMarksPropertyProvided()
+    {
+        var patch = JsonSerializer.Deserialize<NullableReferencePatch>("""{ "name": null }""", JsonOptions.CamelCase)!;
+
+        Assert.True(patch.Has.Name);
+        Assert.Null(patch.Name);
+    }
+
+    [Fact]
+    public void ExplicitNullForObliviousReferenceMarksPropertyProvided()
+    {
+        var patch = JsonSerializer.Deserialize<ObliviousReferencePatch>("""{ "name": null }""", JsonOptions.CamelCase)!;
+
+        Assert.True(patch.Has.Name);
+        Assert.Null(patch.Name);
     }
 
     [Fact]

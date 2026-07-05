@@ -359,6 +359,89 @@ public class DiagnosticsTests
     }
 
     [Fact]
+    public void ReportsErrorForNullableReferencePatchUsingValueParameterAssignedToNonNullableParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyName))]
+                public string? Name { get; set; }
+
+                private static void ApplyName(Target target, string value)
+                {
+                }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD007" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS8604");
+    }
+
+    [Fact]
+    public void AllowsNonNullableReferencePatchUsingValueParameterAssignedToNullableParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyName))]
+                public string Name { get; set; } = "";
+
+                private static void ApplyName(Target target, string? value)
+                {
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS8604");
+    }
+
+    [Fact]
+    public void AllowsObliviousReferencePatchUsingValueParameter()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            #nullable disable
+
+            using MergePatch;
+
+            public class Target
+            {
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                [PatchUsing(nameof(ApplyName))]
+                public string Name { get; set; }
+
+                private static void ApplyName(Target target, string value)
+                {
+                }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS8604");
+    }
+
+    [Fact]
     public void ReportsErrorForTargetPropertyWithoutSetter()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
