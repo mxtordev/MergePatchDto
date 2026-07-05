@@ -1,12 +1,16 @@
 # MergePatchDto
 
-MergePatchDto is a source-generator package for ergonomic merge-patch DTOs in ASP.NET Core.
+MergePatchDto is a source-generator package for ergonomic merge-patch-style DTO presence tracking in ASP.NET Core.
+
+It is not a full RFC 7396 JSON document merge engine. The package tracks which top-level DTO properties appeared in the JSON body and can generate typed assignment helpers for those properties.
 
 It lets a PATCH endpoint distinguish:
 
 - missing property: leave the target unchanged
 - explicit `null`: assign or clear the target value
 - explicit value: assign the target value
+
+Nested object properties are replacement values, not recursive document merges. Arrays are replacement values, not element-level merges.
 
 ## Install
 
@@ -167,10 +171,11 @@ Common examples:
 
 ## Limitations
 
+- MergePatchDto is DTO presence tracking for merge-patch-style endpoints, not a complete RFC 7396 implementation.
 - Patch DTOs must be top-level, non-generic, non-abstract partial classes.
 - Patch DTOs need an accessible parameterless constructor.
 - `required` members are not supported.
 - Presence tracking is top-level only.
-- Nested objects are treated as provided values and assigned according to the property mapping.
+- Nested object properties are replacement values and are assigned according to the property mapping.
 - Arrays are replacement values, not partial merges.
 - JSON Patch operation arrays, expression-tree mapping, wrapper properties, and DI-driven `ApplyTo` are not part of this package.
