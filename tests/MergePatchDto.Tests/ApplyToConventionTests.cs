@@ -53,4 +53,18 @@ public class ApplyToConventionTests
         Assert.Equal("Draft", documentTarget.Name);
         Assert.Equal("Draft", draftTarget.Name);
     }
+
+    [Fact]
+    public void PatchDtoCanTargetInterfaceImplementedByMultipleClasses()
+    {
+        var patch = JsonSerializer.Deserialize<InterfaceTargetPatch>("""{ "Name": "Shared" }""")!;
+        var documentTarget = new NamedDocument();
+        var draftTarget = new NamedDraft();
+
+        patch.ApplyTo(documentTarget);
+        patch.ApplyTo(draftTarget);
+
+        Assert.Equal("Shared", documentTarget.Name);
+        Assert.Equal("Shared", draftTarget.Name);
+    }
 }

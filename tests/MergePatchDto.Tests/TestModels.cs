@@ -76,6 +76,21 @@ public sealed class DocumentDraft
     public string? Name { get; set; }
 }
 
+public interface INamedResource
+{
+    string? Name { get; set; }
+}
+
+public sealed class NamedDocument : INamedResource
+{
+    public string? Name { get; set; }
+}
+
+public sealed class NamedDraft : INamedResource
+{
+    public string? Name { get; set; }
+}
+
 public sealed class Address
 {
     public string? City { get; set; }
@@ -109,6 +124,12 @@ public partial class UpdateDocumentPatch
 [MergePatchTarget(typeof(Document))]
 [MergePatchTarget(typeof(DocumentDraft))]
 public partial class MultiTargetPatch
+{
+    public string? Name { get; set; }
+}
+
+[MergePatch(typeof(INamedResource))]
+public partial class InterfaceTargetPatch
 {
     public string? Name { get; set; }
 }

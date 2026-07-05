@@ -152,6 +152,7 @@ By default, patch properties map to target properties with the same CLR name.
 - `[PatchIgnore]` excludes client-only values from generated `ApplyTo`.
 - `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch property was provided.
 - `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo` overload.
+- Targets can be interfaces. In that case, generated `ApplyTo` accepts the interface and maps only members declared on that interface.
 
 Supported custom apply signatures are:
 
