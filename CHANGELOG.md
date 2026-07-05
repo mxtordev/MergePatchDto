@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+Breaking changes:
+
+- Removed `[MergePatchTarget]`; use `[MergePatch(typeof(Target))]` for generated `ApplyTo`. Additional generated target overloads are no longer supported.
+- Non-nullable reference patch properties now reject explicit JSON `null`.
+- Nullable patch values now fail build-time validation when they would flow into non-nullable `ApplyTo` targets or `[PatchUsing]` parameters.
+
+Changes:
+
+- Inherited patch DTO properties now participate in presence tracking, JSON metadata, and generated `ApplyTo`.
+- Added clearer diagnostics for unsupported patch shapes, inaccessible targets, duplicate names, and ambiguous mappings.
+- Fixed strict unknown-property rejection, property-level `JsonConverterAttribute` handling, and release packaging metadata.
+
 ## 0.1.0 - Initial release
 
 MergePatchDto provides source-generated DTO presence tracking for merge-patch-style ASP.NET Core endpoints.
