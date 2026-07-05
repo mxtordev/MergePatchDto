@@ -123,5 +123,13 @@ namespace MergePatchDto.Generators
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor GeneratedPublicMemberConflict = new DiagnosticDescriptor(
+            "MPD016",
+            "Merge patch DTO member conflicts with generated API",
+            "Merge patch DTO '{0}' already defines member '{1}', which conflicts with the generated MergePatchDto API",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
     }
 }
