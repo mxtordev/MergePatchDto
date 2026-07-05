@@ -4,20 +4,21 @@
 
 Breaking changes:
 
-- Removed `[MergePatchTarget]`. Pass the target type directly to `[MergePatch(typeof(Target))]` instead.
-- Tightened generated `ApplyTo` validation so unsafe nullable-to-non-nullable assignments fail at build time.
+- Removed `[MergePatchTarget]`. Use `[MergePatch(typeof(Target))]` for the generated `ApplyTo` target; additional generated target overloads are no longer supported.
+- Generated converters now reject explicit JSON `null` for non-nullable reference patch properties.
+- Generated `ApplyTo` and `[PatchUsing]` validation now fail at build time when nullable patch values could flow into non-nullable target members or parameters.
 
 Added:
 
-- Support for inherited patch DTO properties.
-- Build-time diagnostics for more unsupported patch shapes and mappings, including generic, nested, abstract, record, required-member, constructor, duplicate-name, inaccessible-target, and open-generic-target cases.
-- Duplicate JSON property name diagnostics for explicit and naming-policy-derived names.
+- Support for inherited patch DTO properties, including inherited JSON and mapping attributes.
+- Build-time diagnostics for record patch DTOs, open generic target types, less-accessible target types, duplicate inherited CLR property names, and duplicate explicit JSON property names.
+- Runtime JSON-name collision validation for naming-policy-derived and case-insensitive duplicate names.
 
 Fixed:
 
-- Strict unknown-property handling now rejects unknown JSON members while reading the generated converter.
-- Property-level JSON converter detection now supports attributes derived from `JsonConverterAttribute`.
-- Release packaging now includes the analyzer and symbols in the expected NuGet package locations.
+- Strict unknown-property handling no longer needs to read an unknown property's value before rejecting it.
+- Property-level JSON converter handling now supports custom `JsonConverterAttribute` subclasses and factory-style converter attributes.
+- Release packaging no longer treats the generator project as a separate package and enables CI deterministic/source-link builds.
 
 Changed:
 
