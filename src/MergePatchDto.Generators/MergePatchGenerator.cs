@@ -57,6 +57,11 @@ namespace MergePatchDto.Generators
                         model.TypeSymbol.Name));
                 }
 
+                if (ReportGeneratedPublicMemberConflicts(sourceContext, model))
+                {
+                    return;
+                }
+
                 var source = SourceTextEmitter.Emit(model, compilation, sourceContext);
                 sourceContext.AddSource(SourceTextEmitter.GetHintName(model), SourceText.From(source, System.Text.Encoding.UTF8));
             });
@@ -126,6 +131,43 @@ namespace MergePatchDto.Generators
             }
 
             return hasErrors;
+        }
+
+        private static bool ReportGeneratedPublicMemberConflicts(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+
+            foreach (var member in model.TypeSymbol.GetMembers())
+            {
+                if (member.IsImplicitlyDeclared)
+                {
+                    continue;
+                }
+
+                if (!IsGeneratedPublicMemberName(model, member.Name))
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.GeneratedPublicMemberConflict,
+                    member.Locations.FirstOrDefault() ?? model.Location,
+                    model.TypeSymbol.Name,
+                    member.Name));
+                hasErrors = true;
+            }
+
+            return hasErrors;
+        }
+
+        private static bool IsGeneratedPublicMemberName(PatchDtoModel model, string memberName)
+        {
+            if (memberName == "Has" || memberName == "ProvidedFields")
+            {
+                return true;
+            }
+
+            return model.Targets.Length > 0 && memberName == "ApplyTo";
         }
 
         private static bool HasAccessibleParameterlessConstructor(INamedTypeSymbol typeSymbol)

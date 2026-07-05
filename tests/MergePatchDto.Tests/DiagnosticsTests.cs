@@ -1,9 +1,52 @@
+using System.Reflection;
+using MergePatchDto.Generators;
 using Microsoft.CodeAnalysis;
 
 namespace MergePatchDto.Tests;
 
 public class DiagnosticsTests
 {
+    [Fact]
+    public void DiagnosticDescriptorsHaveAuditedSeverities()
+    {
+        var expectedSeverities = new Dictionary<string, DiagnosticSeverity>
+        {
+            ["MPD001"] = DiagnosticSeverity.Error,
+            ["MPD002"] = DiagnosticSeverity.Error,
+            ["MPD003"] = DiagnosticSeverity.Error,
+            ["MPD004"] = DiagnosticSeverity.Error,
+            ["MPD005"] = DiagnosticSeverity.Error,
+            ["MPD006"] = DiagnosticSeverity.Error,
+            ["MPD007"] = DiagnosticSeverity.Error,
+            ["MPD008"] = DiagnosticSeverity.Error,
+            ["MPD009"] = DiagnosticSeverity.Error,
+            ["MPD010"] = DiagnosticSeverity.Error,
+            ["MPD011"] = DiagnosticSeverity.Error,
+            ["MPD012"] = DiagnosticSeverity.Error,
+            ["MPD013"] = DiagnosticSeverity.Error,
+            ["MPD014"] = DiagnosticSeverity.Error,
+            ["MPD015"] = DiagnosticSeverity.Error,
+            ["MPD016"] = DiagnosticSeverity.Error
+        };
+
+        var descriptors = typeof(MergePatchGenerator).Assembly
+            .GetType("MergePatchDto.Generators.Diagnostics", throwOnError: true)!
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Select(field => (DiagnosticDescriptor)field.GetValue(null)!)
+            .ToDictionary(descriptor => descriptor.Id);
+
+        Assert.Equal(
+            expectedSeverities.Keys.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+            descriptors.Keys.OrderBy(id => id, StringComparer.Ordinal).ToArray());
+
+        foreach (var expected in expectedSeverities)
+        {
+            var descriptor = descriptors[expected.Key];
+            Assert.Equal(expected.Value, descriptor.DefaultSeverity);
+            Assert.True(descriptor.IsEnabledByDefault);
+        }
+    }
+
     [Fact]
     public void ReportsErrorWhenPatchDtoIsNotPartial()
     {
@@ -455,7 +498,7 @@ public class DiagnosticsTests
     }
 
     [Fact]
-    public void WarnsWhenTargetlessPatchUsesTargetMappingAttributes()
+    public void ReportsErrorWhenTargetlessPatchUsesTargetMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -473,11 +516,11 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id is "MPD004" or "MPD005" or "MPD006" or "MPD007");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void WarnsInsteadOfReportingConflictsForTargetlessPatchMappingAttributes()
+    public void ReportsTargetlessMappingErrorInsteadOfConflictsForTargetlessPatchMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -493,11 +536,11 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "MPD003");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void WarnsWhenTargetlessPatchUsesPatchIgnore()
+    public void ReportsErrorWhenTargetlessPatchUsesPatchIgnore()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -511,6 +554,6 @@ public class DiagnosticsTests
             }
             """);
 
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 }
