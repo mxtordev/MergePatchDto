@@ -81,6 +81,16 @@ public async Task<IActionResult> PatchPerson(
 
 This clears `Person.Bio` and leaves every omitted property unchanged.
 
+The same presence information is available directly when an endpoint needs
+custom logic:
+
+```csharp
+if (patch.Has.Bio)
+{
+    person.Bio = patch.Bio;
+}
+```
+
 Use C# nullability to model whether a field may be set to `null`; presence is
 tracked separately through the generated `Has` API. A property does not need to
 be nullable just to be optional in the request body. Omitted fields are skipped
@@ -98,8 +108,8 @@ only fields declared on that DTO.
 The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
 
 ```csharp
-[MergePatch(typeof(Person), UnknownPropertyHandling = UnknownPropertyHandling.Reject)]
-public partial class StrictPersonPatch
+[MergePatch(typeof(Person))]
+public partial class PersonContactPatch
 {
     public string Name { get; set; } = "";
     public string? Email { get; set; }
@@ -116,17 +126,20 @@ It does not mean every property on `Person` is patchable. The DTO remains the bo
 
 ## API Overview
 
-Annotating a top-level partial class with `[MergePatch]` generates:
+- `[MergePatch]` marks a patch DTO and generates presence tracking.
+- `[MergePatch(typeof(Target))]` also generates `ApplyTo(Target target)`.
+- `Has` exposes one boolean member per DTO property, using the CLR property
+  name.
+- `ApplyTo` updates only target properties whose matching patch property was
+  present in JSON.
+- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo`
+  overload.
+- `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` customize generated mapping.
+- `UnknownPropertyHandling` controls whether unknown JSON properties are ignored
+  or rejected.
 
-- a `Has` property with one boolean member per DTO property, using the CLR
-  property name
-- a `System.Text.Json` converter that records which top-level JSON properties
-  were present
-- `ApplyTo(Target target)` overloads for `[MergePatch(typeof(Target))]` and
-  `[MergePatchTarget(typeof(Target))]`
-
-Targetless `[MergePatch]` DTOs get `Has` and the JSON converter, but no
-generated `ApplyTo` method.
+Targetless `[MergePatch]` DTOs get `Has` and the JSON converter, but no generated
+`ApplyTo` method.
 
 ## Presence Tracking
 
