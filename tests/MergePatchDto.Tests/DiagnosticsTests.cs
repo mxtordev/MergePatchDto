@@ -30,7 +30,8 @@ public class DiagnosticsTests
             ["MPD017"] = DiagnosticSeverity.Error,
             ["MPD018"] = DiagnosticSeverity.Error,
             ["MPD019"] = DiagnosticSeverity.Error,
-            ["MPD020"] = DiagnosticSeverity.Error
+            ["MPD020"] = DiagnosticSeverity.Error,
+            ["MPD021"] = DiagnosticSeverity.Error
         };
 
         var descriptors = typeof(MergePatchGenerator).Assembly
@@ -155,6 +156,75 @@ public class DiagnosticsTests
         Assert.DoesNotContain(diagnostics, diagnostic =>
             diagnostic.Severity == DiagnosticSeverity.Error &&
             !diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReportsErrorWhenPatchTargetIsLessAccessibleThanPublicPatchDto()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            internal class Target
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD021" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS0051");
+    }
+
+    [Fact]
+    public void AllowsInternalPatchDtoWithInternalPatchTarget()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            internal class Target
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            internal partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS0051");
+    }
+
+    [Fact]
+    public void AllowsPublicPatchDtoWithPublicPatchTarget()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS0051");
     }
 
     [Fact]

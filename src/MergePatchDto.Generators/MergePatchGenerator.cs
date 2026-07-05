@@ -72,6 +72,11 @@ namespace MergePatchDto.Generators
                     return;
                 }
 
+                if (ReportLessAccessibleTargets(sourceContext, model))
+                {
+                    return;
+                }
+
                 if (ReportGeneratedPublicMemberConflicts(sourceContext, model))
                 {
                     return;
@@ -169,6 +174,29 @@ namespace MergePatchDto.Generators
                     target.Location,
                     ToDiagnosticTypeName(target.TargetType),
                     model.TypeSymbol.Name));
+                hasErrors = true;
+            }
+
+            return hasErrors;
+        }
+
+        private static bool ReportLessAccessibleTargets(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+            var patchDtoVisibility = GetEffectiveVisibility(model.TypeSymbol);
+
+            foreach (var target in model.Targets)
+            {
+                if (GetEffectiveVisibility(target.TargetType) >= patchDtoVisibility)
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.PatchTargetLessAccessibleThanPatchDto,
+                    target.Location,
+                    ToDiagnosticTypeName(target.TargetType),
+                    ToDiagnosticTypeName(model.TypeSymbol)));
                 hasErrors = true;
             }
 
@@ -292,6 +320,53 @@ namespace MergePatchDto.Generators
         private static bool IsPatchDtoCandidate(SyntaxNode node)
         {
             return node is ClassDeclarationSyntax || node is RecordDeclarationSyntax;
+        }
+
+        private static EffectiveVisibility GetEffectiveVisibility(ITypeSymbol typeSymbol)
+        {
+            var visibility = GetDeclaredVisibility(typeSymbol.DeclaredAccessibility);
+
+            if (typeSymbol is INamedTypeSymbol namedType)
+            {
+                if (namedType.ContainingType != null)
+                {
+                    visibility = Min(visibility, GetEffectiveVisibility(namedType.ContainingType));
+                }
+
+                foreach (var typeArgument in namedType.TypeArguments)
+                {
+                    visibility = Min(visibility, GetEffectiveVisibility(typeArgument));
+                }
+            }
+            else if (typeSymbol is IArrayTypeSymbol arrayType)
+            {
+                visibility = Min(visibility, GetEffectiveVisibility(arrayType.ElementType));
+            }
+            else if (typeSymbol is IPointerTypeSymbol pointerType)
+            {
+                visibility = Min(visibility, GetEffectiveVisibility(pointerType.PointedAtType));
+            }
+
+            return visibility;
+        }
+
+        private static EffectiveVisibility GetDeclaredVisibility(Accessibility accessibility)
+        {
+            switch (accessibility)
+            {
+                case Accessibility.Public:
+                    return EffectiveVisibility.Public;
+                case Accessibility.Internal:
+                case Accessibility.ProtectedOrInternal:
+                    return EffectiveVisibility.Internal;
+                default:
+                    return EffectiveVisibility.Private;
+            }
+        }
+
+        private static EffectiveVisibility Min(EffectiveVisibility left, EffectiveVisibility right)
+        {
+            return left < right ? left : right;
         }
 
         private static PatchDtoModel? BuildModel(GeneratorAttributeSyntaxContext context)
@@ -674,6 +749,13 @@ namespace MergePatchDto.Generators
         private static string ToDiagnosticTypeName(ITypeSymbol symbol)
         {
             return symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+        }
+
+        private enum EffectiveVisibility
+        {
+            Private = 0,
+            Internal = 1,
+            Public = 2
         }
     }
 }
