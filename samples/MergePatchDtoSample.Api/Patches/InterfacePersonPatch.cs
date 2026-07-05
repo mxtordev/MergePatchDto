@@ -6,7 +6,7 @@ namespace MergePatchDtoSample.Api.Patches;
 [MergePatch(typeof(IEditablePersonProfile))]
 public partial class InterfacePersonPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
 
     public string? Email { get; set; }
 

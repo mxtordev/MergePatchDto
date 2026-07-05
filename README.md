@@ -41,7 +41,7 @@ using MergePatchDtoSample.Api.Models;
 [MergePatch(typeof(Person))]
 public partial class UpdatePersonPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
     public string? Email { get; set; }
     public string? Bio { get; set; }
 }
@@ -50,7 +50,7 @@ public partial class UpdatePersonPatch
 Use it directly in an endpoint:
 
 ```csharp
-public ActionResult<PatchResult> PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
+public IActionResult PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
 {
     if (!people.TryGet(id, out var person))
     {
@@ -59,10 +59,7 @@ public ActionResult<PatchResult> PatchWithGeneratedApplyTo(Guid id, UpdatePerson
 
     patch.ApplyTo(person);
 
-    return Ok(new PatchResult(
-        "generated ApplyTo",
-        ProvidedFields(patch),
-        people.Snapshot(person)));
+    return NoContent();
 }
 ```
 
@@ -96,7 +93,7 @@ The patch DTO is the allowlist. Properties that are not on the patch DTO are not
 [MergePatch(typeof(Person), UnknownPropertyHandling = UnknownPropertyHandling.Reject)]
 public partial class StrictPersonPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
     public string? Email { get; set; }
 }
 ```

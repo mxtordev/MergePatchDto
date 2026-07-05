@@ -7,7 +7,7 @@ namespace MergePatchDtoSample.Api.Patches;
 [MergePatch(typeof(Person))]
 public partial class UpdatePersonPatch
 {
-    public string? Name { get; set; }
+    public string Name { get; set; } = "";
 
     public string? Email { get; set; }
 
