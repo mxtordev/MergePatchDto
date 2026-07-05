@@ -18,6 +18,14 @@ namespace MergePatchDto.Generators
                 SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
                 SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
+        private static readonly SymbolDisplayFormat FullyQualifiedTypeOfFormat = new SymbolDisplayFormat(
+            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions:
+                SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
+                SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
         public static string Emit(PatchDtoModel model, Compilation compilation, SourceProductionContext context)
         {
             if (model.Targets.Length > 0)
@@ -519,12 +527,38 @@ namespace MergePatchDto.Generators
                 builder.Append(indent).AppendLine("{");
                 builder.Append(indent).AppendLine("    var mergePatchOptions = new global::System.Text.Json.JsonSerializerOptions(options);");
 
-                if (property.JsonConverterTypeName != null)
+                if (property.HasJsonConverterAttribute)
                 {
                     builder.Append(indent)
-                        .Append("    var converter = (global::System.Text.Json.Serialization.JsonConverter?)global::System.Activator.CreateInstance(typeof(")
-                        .Append(property.JsonConverterTypeName)
+                        .Append("    var property = typeof(")
+                        .Append(model.TypeName)
+                        .Append(").GetProperty(")
+                        .Append(ToLiteral(property.Name))
+                        .AppendLine(", global::System.Reflection.BindingFlags.Instance | global::System.Reflection.BindingFlags.Public);");
+                    builder.Append(indent).AppendLine("    if (property == null)");
+                    builder.Append(indent).AppendLine("    {");
+                    builder.Append(indent).AppendLine("        throw new global::System.InvalidOperationException(\"Patch DTO property could not be found.\");");
+                    builder.Append(indent).AppendLine("    }");
+                    builder.AppendLine();
+                    builder.Append(indent).AppendLine("    var converterAttribute = (global::System.Text.Json.Serialization.JsonConverterAttribute?)global::System.Attribute.GetCustomAttribute(property, typeof(global::System.Text.Json.Serialization.JsonConverterAttribute));");
+                    builder.Append(indent).AppendLine("    if (converterAttribute == null)");
+                    builder.Append(indent).AppendLine("    {");
+                    builder.Append(indent).AppendLine("        throw new global::System.InvalidOperationException(\"Patch DTO property converter attribute could not be found.\");");
+                    builder.Append(indent).AppendLine("    }");
+                    builder.AppendLine();
+                    builder.Append(indent).AppendLine("    global::System.Text.Json.Serialization.JsonConverter? converter;");
+                    builder.Append(indent).AppendLine("    if (converterAttribute.ConverterType == null)");
+                    builder.Append(indent).AppendLine("    {");
+                    builder.Append(indent)
+                        .Append("        converter = converterAttribute.CreateConverter(typeof(")
+                        .Append(ToTypeOfTypeName(property.Symbol.Type))
                         .AppendLine("));");
+                    builder.Append(indent).AppendLine("    }");
+                    builder.Append(indent).AppendLine("    else");
+                    builder.Append(indent).AppendLine("    {");
+                    builder.Append(indent).AppendLine("        converter = (global::System.Text.Json.Serialization.JsonConverter?)global::System.Activator.CreateInstance(converterAttribute.ConverterType);");
+                    builder.Append(indent).AppendLine("    }");
+                    builder.AppendLine();
                     builder.Append(indent).AppendLine("    if (converter == null)");
                     builder.Append(indent).AppendLine("    {");
                     builder.Append(indent).AppendLine("        throw new global::System.InvalidOperationException(\"Patch DTO property converter could not be created.\");");
@@ -887,6 +921,11 @@ namespace MergePatchDto.Generators
         private static string ToTypeName(ITypeSymbol symbol)
         {
             return symbol.ToDisplayString(FullyQualifiedNullableFormat);
+        }
+
+        private static string ToTypeOfTypeName(ITypeSymbol symbol)
+        {
+            return symbol.ToDisplayString(FullyQualifiedTypeOfFormat);
         }
 
         private static string GetGlobalTypeName(string namespaceName, string typeName)
