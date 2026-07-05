@@ -6,7 +6,7 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <NoWarn>$(NoWarn);RS2008</NoWarn>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
     <PackageId>MergePatchDto.Generators</PackageId>
     <Description>Source generator for MergePatchDto merge-patch DTOs.</Description>
   </PropertyGroup>
