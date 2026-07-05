@@ -131,5 +131,13 @@ namespace MergePatchDto.Generators
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DuplicateExplicitJsonPropertyName = new DiagnosticDescriptor(
+            "MPD017",
+            "Merge patch DTO properties have duplicate JSON property names",
+            "Patch properties '{0}' and '{1}' both use JSON property name '{2}'",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
     }
 }
