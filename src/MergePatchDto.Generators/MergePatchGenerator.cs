@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -71,7 +72,17 @@ namespace MergePatchDto.Generators
                     return;
                 }
 
+                if (ReportLessAccessibleTargets(sourceContext, model))
+                {
+                    return;
+                }
+
                 if (ReportGeneratedPublicMemberConflicts(sourceContext, model))
+                {
+                    return;
+                }
+
+                if (ReportDuplicatePatchPropertyNames(sourceContext, model))
                 {
                     return;
                 }
@@ -169,6 +180,29 @@ namespace MergePatchDto.Generators
             return hasErrors;
         }
 
+        private static bool ReportLessAccessibleTargets(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+            var patchDtoVisibility = GetEffectiveVisibility(model.TypeSymbol);
+
+            foreach (var target in model.Targets)
+            {
+                if (GetEffectiveVisibility(target.TargetType) >= patchDtoVisibility)
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Diagnostics.PatchTargetLessAccessibleThanPatchDto,
+                    target.Location,
+                    ToDiagnosticTypeName(target.TargetType),
+                    ToDiagnosticTypeName(model.TypeSymbol)));
+                hasErrors = true;
+            }
+
+            return hasErrors;
+        }
+
         private static bool ReportGeneratedPublicMemberConflicts(SourceProductionContext context, PatchDtoModel model)
         {
             var hasErrors = false;
@@ -191,6 +225,32 @@ namespace MergePatchDto.Generators
                     model.TypeSymbol.Name,
                     member.Name));
                 hasErrors = true;
+            }
+
+            return hasErrors;
+        }
+
+        private static bool ReportDuplicatePatchPropertyNames(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+            var seenNames = new System.Collections.Generic.Dictionary<string, PatchPropertyModel>(System.StringComparer.Ordinal);
+
+            foreach (var property in model.Properties)
+            {
+                if (seenNames.TryGetValue(property.Name, out var existingProperty))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.DuplicatePatchPropertyName,
+                        property.Location,
+                        property.Name,
+                        ToDiagnosticTypeName(property.Symbol.ContainingType),
+                        existingProperty.Name,
+                        ToDiagnosticTypeName(existingProperty.Symbol.ContainingType)));
+                    hasErrors = true;
+                    continue;
+                }
+
+                seenNames.Add(property.Name, property);
             }
 
             return hasErrors;
@@ -262,6 +322,53 @@ namespace MergePatchDto.Generators
             return node is ClassDeclarationSyntax || node is RecordDeclarationSyntax;
         }
 
+        private static EffectiveVisibility GetEffectiveVisibility(ITypeSymbol typeSymbol)
+        {
+            var visibility = GetDeclaredVisibility(typeSymbol.DeclaredAccessibility);
+
+            if (typeSymbol is INamedTypeSymbol namedType)
+            {
+                if (namedType.ContainingType != null)
+                {
+                    visibility = Min(visibility, GetEffectiveVisibility(namedType.ContainingType));
+                }
+
+                foreach (var typeArgument in namedType.TypeArguments)
+                {
+                    visibility = Min(visibility, GetEffectiveVisibility(typeArgument));
+                }
+            }
+            else if (typeSymbol is IArrayTypeSymbol arrayType)
+            {
+                visibility = Min(visibility, GetEffectiveVisibility(arrayType.ElementType));
+            }
+            else if (typeSymbol is IPointerTypeSymbol pointerType)
+            {
+                visibility = Min(visibility, GetEffectiveVisibility(pointerType.PointedAtType));
+            }
+
+            return visibility;
+        }
+
+        private static EffectiveVisibility GetDeclaredVisibility(Accessibility accessibility)
+        {
+            switch (accessibility)
+            {
+                case Accessibility.Public:
+                    return EffectiveVisibility.Public;
+                case Accessibility.Internal:
+                case Accessibility.ProtectedOrInternal:
+                    return EffectiveVisibility.Internal;
+                default:
+                    return EffectiveVisibility.Private;
+            }
+        }
+
+        private static EffectiveVisibility Min(EffectiveVisibility left, EffectiveVisibility right)
+        {
+            return left < right ? left : right;
+        }
+
         private static PatchDtoModel? BuildModel(GeneratorAttributeSyntaxContext context)
         {
             var typeSymbol = context.TargetSymbol as INamedTypeSymbol;
@@ -271,13 +378,7 @@ namespace MergePatchDto.Generators
                 return null;
             }
 
-            var properties = typeSymbol
-                .GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(IsPatchProperty)
-                .Where(property => !JsonNameResolver.IsIgnoredOnRead(property))
-                .Select(BuildPropertyModel)
-                .ToImmutableArray();
+            var properties = BuildPropertyModels(typeSymbol);
 
             var patchDtoAttribute = context.Attributes.FirstOrDefault(attribute => IsAttribute(attribute, MergePatchAttributeName));
 
@@ -325,6 +426,37 @@ namespace MergePatchDto.Generators
                 openGenericTargets,
                 unresolvedTargets,
                 typeDeclaration.Identifier.GetLocation());
+        }
+
+        private static ImmutableArray<PatchPropertyModel> BuildPropertyModels(INamedTypeSymbol typeSymbol)
+        {
+            return EnumeratePatchPropertyTypes(typeSymbol)
+                .SelectMany(type => type
+                    .GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .Where(IsPatchProperty)
+                    .Where(property => !JsonNameResolver.IsIgnoredOnRead(property)))
+                .Select(BuildPropertyModel)
+                .ToImmutableArray();
+        }
+
+        private static IEnumerable<INamedTypeSymbol> EnumeratePatchPropertyTypes(INamedTypeSymbol typeSymbol)
+        {
+            var hierarchy = new Stack<INamedTypeSymbol>();
+            for (var current = typeSymbol; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            {
+                if (current.TypeKind == TypeKind.Error)
+                {
+                    continue;
+                }
+
+                hierarchy.Push(current);
+            }
+
+            while (hierarchy.Count > 0)
+            {
+                yield return hierarchy.Pop();
+            }
         }
 
         private static PatchPropertyModel BuildPropertyModel(IPropertySymbol property)
@@ -623,6 +755,13 @@ namespace MergePatchDto.Generators
         private static string ToDiagnosticTypeName(ITypeSymbol symbol)
         {
             return symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+        }
+
+        private enum EffectiveVisibility
+        {
+            Private = 0,
+            Internal = 1,
+            Public = 2
         }
     }
 }
