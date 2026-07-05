@@ -20,7 +20,9 @@ jobs:
   publish:
     name: Publish NuGet package
     runs-on: ubuntu-latest
-    environment: release
+    environment:
+      name: release
+      deployment: false
 
     steps:
       - name: Ensure main branch
