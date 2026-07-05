@@ -481,6 +481,52 @@ public class DiagnosticsTests
     }
 
     [Fact]
+    public void ReportsErrorForNullableReferencePatchPropertyAssignedToNonNullableTargetProperty()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public string Name { get; set; } = "";
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD014" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS8601");
+    }
+
+    [Fact]
+    public void AllowsNullableReferencePatchPropertyAssignedToNullableTargetProperty()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Target
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch(typeof(Target))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "CS8601");
+    }
+
+    [Fact]
     public void ReportsErrorForAbstractPatchDto()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
