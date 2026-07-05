@@ -6,7 +6,6 @@ on:
       nuget_username:
         description: NuGet.org username or organization profile name, not an email address.
         required: true
-        default: mxtordev
         type: string
       confirm_publish:
         description: Type publish to confirm publishing to nuget.org.
