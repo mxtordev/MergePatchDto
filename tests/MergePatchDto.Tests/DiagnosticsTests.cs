@@ -26,7 +26,8 @@ public class DiagnosticsTests
             ["MPD013"] = DiagnosticSeverity.Error,
             ["MPD014"] = DiagnosticSeverity.Error,
             ["MPD015"] = DiagnosticSeverity.Error,
-            ["MPD016"] = DiagnosticSeverity.Error
+            ["MPD016"] = DiagnosticSeverity.Error,
+            ["MPD017"] = DiagnosticSeverity.Error
         };
 
         var descriptors = typeof(MergePatchGenerator).Assembly
