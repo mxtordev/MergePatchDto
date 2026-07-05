@@ -155,5 +155,13 @@ namespace MergePatchDto.Generators
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor DuplicatePatchPropertyName = new DiagnosticDescriptor(
+            "MPD020",
+            "Merge patch DTO properties have duplicate CLR names",
+            "Patch property '{0}' on '{1}' conflicts with patch property '{2}' on '{3}'; duplicate CLR property names in a patch DTO inheritance hierarchy are not supported",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
     }
 }

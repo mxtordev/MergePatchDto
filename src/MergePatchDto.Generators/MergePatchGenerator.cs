@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -72,6 +73,11 @@ namespace MergePatchDto.Generators
                 }
 
                 if (ReportGeneratedPublicMemberConflicts(sourceContext, model))
+                {
+                    return;
+                }
+
+                if (ReportDuplicatePatchPropertyNames(sourceContext, model))
                 {
                     return;
                 }
@@ -196,6 +202,32 @@ namespace MergePatchDto.Generators
             return hasErrors;
         }
 
+        private static bool ReportDuplicatePatchPropertyNames(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+            var seenNames = new System.Collections.Generic.Dictionary<string, PatchPropertyModel>(System.StringComparer.Ordinal);
+
+            foreach (var property in model.Properties)
+            {
+                if (seenNames.TryGetValue(property.Name, out var existingProperty))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.DuplicatePatchPropertyName,
+                        property.Location,
+                        property.Name,
+                        ToDiagnosticTypeName(property.Symbol.ContainingType),
+                        existingProperty.Name,
+                        ToDiagnosticTypeName(existingProperty.Symbol.ContainingType)));
+                    hasErrors = true;
+                    continue;
+                }
+
+                seenNames.Add(property.Name, property);
+            }
+
+            return hasErrors;
+        }
+
         private static bool ReportDuplicateExplicitJsonPropertyNames(SourceProductionContext context, PatchDtoModel model)
         {
             var hasErrors = false;
@@ -271,13 +303,7 @@ namespace MergePatchDto.Generators
                 return null;
             }
 
-            var properties = typeSymbol
-                .GetMembers()
-                .OfType<IPropertySymbol>()
-                .Where(IsPatchProperty)
-                .Where(property => !JsonNameResolver.IsIgnoredOnRead(property))
-                .Select(BuildPropertyModel)
-                .ToImmutableArray();
+            var properties = BuildPropertyModels(typeSymbol);
 
             var patchDtoAttribute = context.Attributes.FirstOrDefault(attribute => IsAttribute(attribute, MergePatchAttributeName));
 
@@ -325,6 +351,37 @@ namespace MergePatchDto.Generators
                 openGenericTargets,
                 unresolvedTargets,
                 typeDeclaration.Identifier.GetLocation());
+        }
+
+        private static ImmutableArray<PatchPropertyModel> BuildPropertyModels(INamedTypeSymbol typeSymbol)
+        {
+            return EnumeratePatchPropertyTypes(typeSymbol)
+                .SelectMany(type => type
+                    .GetMembers()
+                    .OfType<IPropertySymbol>()
+                    .Where(IsPatchProperty)
+                    .Where(property => !JsonNameResolver.IsIgnoredOnRead(property)))
+                .Select(BuildPropertyModel)
+                .ToImmutableArray();
+        }
+
+        private static IEnumerable<INamedTypeSymbol> EnumeratePatchPropertyTypes(INamedTypeSymbol typeSymbol)
+        {
+            var hierarchy = new Stack<INamedTypeSymbol>();
+            for (var current = typeSymbol; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            {
+                if (current.TypeKind == TypeKind.Error)
+                {
+                    continue;
+                }
+
+                hierarchy.Push(current);
+            }
+
+            while (hierarchy.Count > 0)
+            {
+                yield return hierarchy.Pop();
+            }
         }
 
         private static PatchPropertyModel BuildPropertyModel(IPropertySymbol property)
