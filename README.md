@@ -36,30 +36,33 @@ Define a partial patch DTO and point it at the type it updates:
 
 ```csharp
 using MergePatch;
+using MergePatchDtoSample.Api.Models;
 
-[MergePatch(typeof(Document))]
-public partial class UpdateDocumentPatch
+[MergePatch(typeof(Person))]
+public partial class UpdatePersonPatch
 {
     public string? Name { get; set; }
-    public string? Summary { get; set; }
+    public string? Email { get; set; }
+    public string? Bio { get; set; }
 }
 ```
 
 Use it directly in an endpoint:
 
 ```csharp
-public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
+public ActionResult<PatchResult> PatchWithGeneratedApplyTo(Guid id, UpdatePersonPatch patch)
 {
-    var document = await db.Documents.FindAsync(id);
-    if (document is null)
+    if (!people.TryGet(id, out var person))
     {
         return NotFound();
     }
 
-    patch.ApplyTo(document);
+    patch.ApplyTo(person);
 
-    await db.SaveChangesAsync();
-    return NoContent();
+    return Ok(new PatchResult(
+        "generated ApplyTo",
+        ProvidedFields(patch),
+        people.Snapshot(person)));
 }
 ```
 
@@ -67,11 +70,17 @@ public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
 
 ```json
 {
-  "summary": null
+  "bio": null
 }
 ```
 
-This clears `Document.Summary` and leaves every omitted property unchanged.
+This clears `Person.Bio` and leaves every omitted property unchanged.
+
+Use C# nullability to model whether a field may be set to `null`; presence is
+tracked separately through the generated `Has` API. A property does not need to
+be nullable just to be optional in the request body. Omitted fields are skipped
+because `Has` is false. The sample patch uses nullable properties where the API
+accepts explicit clearing.
 
 For renamed target properties, accepted client metadata, or domain-specific
 update methods, use the mapping attributes described below.
@@ -84,21 +93,21 @@ only fields declared on that DTO.
 The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
 
 ```csharp
-[MergePatch(typeof(Document))]
-public partial class UpdateDocumentPatch
+[MergePatch(typeof(Person), UnknownPropertyHandling = UnknownPropertyHandling.Reject)]
+public partial class StrictPersonPatch
 {
     public string? Name { get; set; }
-    public string? Description { get; set; }
+    public string? Email { get; set; }
 }
 ```
 
 The target type lets MergePatchDto generate typed mapping:
 
 ```csharp
-patch.ApplyTo(document);
+patch.ApplyTo(person);
 ```
 
-It does not mean every property on `Document` is patchable. The DTO remains the boundary.
+It does not mean every property on `Person` is patchable. The DTO remains the boundary.
 
 ## API Overview
 
@@ -122,9 +131,9 @@ do not have to guess from nullable/default values:
 ```csharp
 var has = patch.Has;
 
-if (has.Name) entity.Name = patch.Name;
-if (has.Description) entity.Summary = patch.Description;
-if (has.Priority) entity.SetPriority(patch.Priority);
+if (has.Name) person.Name = patch.Name;
+if (has.Bio) person.Bio = patch.Bio;
+if (has.Age) person.SetAge(patch.Age);
 ```
 
 ## Manual Updates Without ApplyTo
@@ -135,10 +144,10 @@ Generated `ApplyTo` is useful when patch properties map cleanly to a target type
 using MergePatch;
 
 [MergePatch]
-public partial class UpdateDocumentPatch
+public partial class ManualPersonPatch
 {
-    public string? Name { get; set; }
-    public int? PriorityDelta { get; set; }
+    public bool? IsActive { get; set; }
+    public string? AdminNote { get; set; }
 }
 ```
 
@@ -147,11 +156,16 @@ MergePatchDto still generates the JSON converter and `Has` API:
 ```csharp
 var has = patch.Has;
 
-if (has.Name)
-    entity.Name = patch.Name;
+if (has.IsActive)
+{
+    person.IsActive = patch.IsActive.GetValueOrDefault();
+    person.DeactivatedAt = person.IsActive ? null : DateTimeOffset.UtcNow;
+}
 
-if (has.PriorityDelta)
-    entity.IncrementPriority(patch.PriorityDelta.GetValueOrDefault());
+if (has.AdminNote)
+{
+    person.AdminNote = patch.AdminNote;
+}
 ```
 
 Add a target type when you want a typed generated `ApplyTo` method.
@@ -172,21 +186,23 @@ If a target property should not be patchable, leave it off the DTO.
 - Targets can be interfaces. In that case, generated `ApplyTo` accepts the interface and maps only members declared on that interface.
 
 ```csharp
-[MergePatch(typeof(Document))]
-public partial class UpdateDocumentPatch
+[MergePatch(typeof(Person))]
+public partial class UpdatePersonPatch
 {
-    [PatchTo(nameof(Document.Summary))]
-    public string? Description { get; set; }
+    [JsonPropertyName("phone")]
+    [PatchTo(nameof(Person.PhoneNumber))]
+    public string? Phone { get; set; }
 
     [PatchIgnore]
     public string? RequestId { get; set; }
 
-    [PatchUsing(nameof(ApplyPriority))]
-    public int? Priority { get; set; }
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    [PatchUsing(nameof(ApplyAge))]
+    public int? Age { get; set; }
 
-    private static void ApplyPriority(Document target, int? value)
+    private static void ApplyAge(Person target, int? value)
     {
-        target.SetPriority(value);
+        target.SetAge(value);
     }
 }
 ```
@@ -194,8 +210,8 @@ public partial class UpdateDocumentPatch
 Supported custom apply signatures are:
 
 ```csharp
-private static void ApplyPriority(Document target, int? value)
-private static void ApplyPriority(UpdateDocumentPatch patch, Document target, int? value)
+private static void ApplyAge(Person target, int? value)
+private static void ApplyAge(UpdatePersonPatch patch, Person target, int? value)
 ```
 
 Target-specific mapping attributes are invalid on targetless patch types and produce an error.
