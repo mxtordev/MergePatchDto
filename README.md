@@ -47,6 +47,11 @@ public partial class UpdatePersonPatch
 }
 ```
 
+The patch DTO is the allowlist: only properties declared on
+`UpdatePersonPatch` can be updated through this endpoint. The target type
+enables generated `ApplyTo`; it does not make every `Person` property
+patchable.
+
 Use it in a normal PATCH endpoint after loading the entity being updated:
 
 ```csharp
@@ -100,41 +105,14 @@ accepts explicit clearing.
 For renamed target properties, accepted client metadata, or domain-specific
 update methods, use the mapping attributes described below.
 
-## When to Use MergePatchDto
-
-Use MergePatchDto when the endpoint should accept a fixed DTO shape and update
-only fields declared on that DTO.
-
-The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
-
-```csharp
-[MergePatch(typeof(Person))]
-public partial class PersonContactPatch
-{
-    public string Name { get; set; } = "";
-    public string? Email { get; set; }
-}
-```
-
-The target type lets MergePatchDto generate typed mapping:
-
-```csharp
-patch.ApplyTo(person);
-```
-
-If the same patch shape should apply to multiple concrete types, target a
-shared interface. Generated `ApplyTo` accepts the interface and maps only
-members declared on that interface.
-
-It does not mean every property on `Person` is patchable. The DTO remains the boundary.
-
 ## Manual Updates
 
 Generated `ApplyTo` is useful when patch properties map cleanly to a target type.
 When validation or domain logic needs to act only on fields sent by the client,
 use the generated `Has` API directly.
 
-For manual update logic, omit the target type:
+Targetless `[MergePatch]` DTOs are for endpoints that want presence tracking
+but own the update logic. Omit the target type:
 
 ```csharp
 using MergePatch;
@@ -191,7 +169,6 @@ public partial class UpdatePersonPatch
     [PatchIgnore]
     public string? RequestId { get; set; }
 
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     [PatchUsing(nameof(ApplyAge))]
     public int? Age { get; set; }
 
