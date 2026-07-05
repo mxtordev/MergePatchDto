@@ -14,8 +14,13 @@
     <PackageTags>merge-patch;json-merge-patch;aspnetcore;dto;source-generator;system-text-json</PackageTags>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/mxtordev/MergePatchDto</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);AddGeneratorToPackage</TargetsForTfmSpecificBuildOutput>
+    <TargetsForTfmSpecificDebugSymbolsInPackage>$(TargetsForTfmSpecificDebugSymbolsInPackage);AddGeneratorSymbolsToPackage</TargetsForTfmSpecificDebugSymbolsInPackage>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +31,16 @@
   <Target Name="AddGeneratorToPackage" DependsOnTargets="ResolveReferences">
     <ItemGroup>
       <TfmSpecificPackageFile Include="../MergePatchDto.Generators/bin/$(Configuration)/netstandard2.0/MergePatchDto.Generators.dll" PackagePath="analyzers/dotnet/cs" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="AddGeneratorSymbolsToPackage" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <TfmSpecificDebugSymbolsFile Include="../MergePatchDto.Generators/bin/$(Configuration)/netstandard2.0/MergePatchDto.Generators.pdb">
+        <FinalOutputPath>%(FullPath)</FinalOutputPath>
+        <TargetFramework>$(TargetFramework)</TargetFramework>
+        <TargetPath>MergePatchDto.Generators.pdb</TargetPath>
+      </TfmSpecificDebugSymbolsFile>
     </ItemGroup>
   </Target>
 
