@@ -139,5 +139,21 @@ namespace MergePatchDto.Generators
             "MergePatchDto",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor OpenGenericPatchTargetNotSupported = new DiagnosticDescriptor(
+            "MPD018",
+            "Open generic patch targets are not supported",
+            "Patch target '{0}' for merge patch DTO '{1}' cannot be an open generic type",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
+
+        public static readonly DiagnosticDescriptor RecordPatchDtoNotSupported = new DiagnosticDescriptor(
+            "MPD019",
+            "Record class merge patch DTOs are not supported",
+            "Merge patch DTO '{0}' cannot be a record class; use a partial class",
+            "MergePatchDto",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true);
     }
 }

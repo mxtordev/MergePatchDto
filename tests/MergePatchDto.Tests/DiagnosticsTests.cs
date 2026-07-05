@@ -27,7 +27,9 @@ public class DiagnosticsTests
             ["MPD014"] = DiagnosticSeverity.Error,
             ["MPD015"] = DiagnosticSeverity.Error,
             ["MPD016"] = DiagnosticSeverity.Error,
-            ["MPD017"] = DiagnosticSeverity.Error
+            ["MPD017"] = DiagnosticSeverity.Error,
+            ["MPD018"] = DiagnosticSeverity.Error,
+            ["MPD019"] = DiagnosticSeverity.Error
         };
 
         var descriptors = typeof(MergePatchGenerator).Assembly
@@ -66,6 +68,26 @@ public class DiagnosticsTests
     }
 
     [Fact]
+    public void ReportsErrorWhenPatchDtoIsRecordClass()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            [MergePatch]
+            public partial record class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD019" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic =>
+            diagnostic.Severity == DiagnosticSeverity.Error &&
+            !diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReportsErrorWhenPatchTargetCannotBeResolved()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
@@ -81,6 +103,57 @@ public class DiagnosticsTests
             """);
 
         Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD002" && diagnostic.Severity == DiagnosticSeverity.Error);
+    }
+
+    [Fact]
+    public void ReportsErrorWhenPrimaryPatchTargetIsOpenGeneric()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Box<T>
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch(typeof(Box<>))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD018" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic =>
+            diagnostic.Severity == DiagnosticSeverity.Error &&
+            !diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReportsErrorWhenAdditionalPatchTargetIsOpenGeneric()
+    {
+        var diagnostics = DiagnosticTestHelper.GetAllDiagnostics(
+            """
+            using MergePatch;
+
+            public class Box<T>
+            {
+                public string? Name { get; set; }
+            }
+
+            [MergePatch]
+            [MergePatchTarget(typeof(Box<>))]
+            public partial class Patch
+            {
+                public string? Name { get; set; }
+            }
+            """);
+
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD018" && diagnostic.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain(diagnostics, diagnostic =>
+            diagnostic.Severity == DiagnosticSeverity.Error &&
+            !diagnostic.Id.StartsWith("MPD", StringComparison.Ordinal));
     }
 
     [Fact]
