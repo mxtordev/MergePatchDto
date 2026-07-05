@@ -154,7 +154,7 @@ public partial class StrictPatch
 
 ## Diagnostics
 
-Invalid patch shapes and mappings fail during build with MergePatchDto diagnostics.
+Invalid patch shapes and target-specific mappings fail during build with MergePatchDto diagnostics.
 
 Common examples:
 
@@ -164,6 +164,12 @@ Common examples:
 - patch property type cannot be assigned to the target property type
 - `[PatchUsing]` method is missing or has an unsupported signature
 - a property combines conflicting mapping attributes
+
+The intentional warning is `MPD009`. It is reported when a targetless `[MergePatch]`
+DTO uses target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`,
+or `[PatchUsing]`. Targetless DTOs do not generate `ApplyTo`, so those attributes
+are ignored. Add a target type with `[MergePatch(typeof(Target))]` or
+`[MergePatchTarget(typeof(Target))]`, or remove the target-specific attributes.
 
 ## Limitations
 
