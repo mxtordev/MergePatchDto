@@ -33,20 +33,7 @@ using MergePatch;
 public partial class UpdateDocumentPatch
 {
     public string? Name { get; set; }
-
-    [PatchTo(nameof(Document.Summary))]
-    public string? Description { get; set; }
-
-    [PatchIgnore]
-    public string? RequestId { get; set; }
-
-    [PatchUsing(nameof(ApplyPriority))]
-    public int? Priority { get; set; }
-
-    private static void ApplyPriority(Document target, int? value)
-    {
-        target.SetPriority(value);
-    }
+    public string? Summary { get; set; }
 }
 ```
 
@@ -72,15 +59,20 @@ public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
 
 ```json
 {
-  "description": null
+  "summary": null
 }
 ```
 
 This clears `Document.Summary` and leaves every omitted property unchanged.
 
-## DTO-Shaped PATCH
+For renamed target properties, accepted client metadata, or domain-specific
+update methods, use the mapping attributes described below.
 
-`JsonPatchDocument<T>` is useful when clients need RFC 6902 operation documents with paths and operations. MergePatchDto is for endpoints where the public contract is a fixed DTO shape.
+## When to Use MergePatchDto
+
+ASP.NET Core's `Microsoft.AspNetCore.JsonPatch.JsonPatchDocument<T>` is useful
+when clients need RFC 6902 operation documents with paths and operations.
+MergePatchDto is for endpoints where the public contract is a fixed DTO shape.
 
 The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
 
@@ -101,7 +93,21 @@ patch.ApplyTo(document);
 
 It does not mean every property on `Document` is patchable. The DTO remains the boundary.
 
-## Presence Checks
+## API Overview
+
+Annotating a top-level partial class with `[MergePatch]` generates:
+
+- a `Has` property with one boolean member per DTO property, using the CLR
+  property name
+- a `System.Text.Json` converter that records which top-level JSON properties
+  were present
+- `ApplyTo(Target target)` overloads for `[MergePatch(typeof(Target))]` and
+  `[MergePatchTarget(typeof(Target))]`
+
+Targetless `[MergePatch]` DTOs get `Has` and the JSON converter, but no
+generated `ApplyTo` method.
+
+## Presence Tracking
 
 The hard part of DTO-shaped PATCH is knowing what the client actually sent. After normal deserialization, a missing JSON property and an explicit `null` can both leave a CLR property as `null`.
 
@@ -115,7 +121,7 @@ if (has.Description) entity.Summary = patch.Description;
 if (has.Priority) entity.SetPriority(patch.Priority);
 ```
 
-## Targetless Patches for Domain Logic
+## Manual Updates Without ApplyTo
 
 Generated `ApplyTo` is useful when patch properties map cleanly to a target type. When the update needs domain logic, omit the target type:
 
@@ -144,15 +150,40 @@ if (has.PriorityDelta)
 
 Add a target type when you want a typed generated `ApplyTo` method.
 
-## Mapping Rules
+## Mapping Attributes
 
 By default, patch properties map to target properties with the same CLR name.
+If a target property should not be patchable, leave it off the DTO.
 
-- `[PatchTo(nameof(Target.OtherName))]` maps a patch property to a differently named target property.
-- `[PatchIgnore]` excludes client-only values from generated `ApplyTo`.
-- `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch property was provided.
-- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo` overload.
+- `[PatchTo(nameof(Target.OtherName))]` maps a patch property to a differently
+  named target property.
+- `[PatchIgnore]` is for accepted DTO properties that should still be
+  deserialized and presence-tracked, but excluded from generated `ApplyTo`.
+- `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch
+  property was provided.
+- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo`
+  overload.
 - Targets can be interfaces. In that case, generated `ApplyTo` accepts the interface and maps only members declared on that interface.
+
+```csharp
+[MergePatch(typeof(Document))]
+public partial class UpdateDocumentPatch
+{
+    [PatchTo(nameof(Document.Summary))]
+    public string? Description { get; set; }
+
+    [PatchIgnore]
+    public string? RequestId { get; set; }
+
+    [PatchUsing(nameof(ApplyPriority))]
+    public int? Priority { get; set; }
+
+    private static void ApplyPriority(Document target, int? value)
+    {
+        target.SetPriority(value);
+    }
+}
+```
 
 Supported custom apply signatures are:
 
@@ -163,7 +194,7 @@ private static void ApplyPriority(UpdateDocumentPatch patch, Document target, in
 
 Target-specific mapping attributes are invalid on targetless patch types and produce an error.
 
-## JSON Behavior
+## JSON Deserialization
 
 MergePatchDto generates a `System.Text.Json` converter for each patch DTO.
 
@@ -203,9 +234,7 @@ Common examples:
 
 `MPD009` is reported when a targetless `[MergePatch]` DTO uses target-specific
 mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, or `[PatchUsing]`.
-Targetless DTOs do not generate `ApplyTo`, so those attributes would be
-misleading. Add a target type with `[MergePatch(typeof(Target))]` or
-`[MergePatchTarget(typeof(Target))]`, or remove the target-specific attributes.
+Add a target type or remove the target-specific attributes.
 
 ## Compatibility
 
