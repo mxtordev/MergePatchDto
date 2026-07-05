@@ -39,7 +39,7 @@
       <TfmSpecificDebugSymbolsFile Include="../MergePatchDto.Generators/bin/$(Configuration)/netstandard2.0/MergePatchDto.Generators.pdb">
         <FinalOutputPath>%(FullPath)</FinalOutputPath>
         <TargetFramework>$(TargetFramework)</TargetFramework>
-        <TargetPath>MergePatchDto.Generators.pdb</TargetPath>
+        <TargetPath>/analyzers/dotnet/cs/MergePatchDto.Generators.pdb</TargetPath>
       </TfmSpecificDebugSymbolsFile>
     </ItemGroup>
   </Target>
