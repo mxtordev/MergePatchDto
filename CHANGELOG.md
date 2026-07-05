@@ -4,25 +4,15 @@
 
 Breaking changes:
 
-- Removed `[MergePatchTarget]`. Use `[MergePatch(typeof(Target))]` for the generated `ApplyTo` target; additional generated target overloads are no longer supported.
-- Generated converters now reject explicit JSON `null` for non-nullable reference patch properties.
-- Generated `ApplyTo` and `[PatchUsing]` validation now fail at build time when nullable patch values could flow into non-nullable target members or parameters.
+- Removed `[MergePatchTarget]`; use `[MergePatch(typeof(Target))]` for generated `ApplyTo`. Additional generated target overloads are no longer supported.
+- Non-nullable reference patch properties now reject explicit JSON `null`.
+- Nullable patch values now fail build-time validation when they would flow into non-nullable `ApplyTo` targets or `[PatchUsing]` parameters.
 
-Added:
+Changes:
 
-- Support for inherited patch DTO properties, including inherited JSON and mapping attributes.
-- Build-time diagnostics for record patch DTOs, open generic target types, less-accessible target types, duplicate inherited CLR property names, and duplicate explicit JSON property names.
-- Runtime JSON-name collision validation for naming-policy-derived and case-insensitive duplicate names.
-
-Fixed:
-
-- Strict unknown-property handling no longer needs to read an unknown property's value before rejecting it.
-- Property-level JSON converter handling now supports custom `JsonConverterAttribute` subclasses and factory-style converter attributes.
-- Release packaging no longer treats the generator project as a separate package and enables CI deterministic/source-link builds.
-
-Changed:
-
-- README and sample API docs now use the current `[MergePatch(typeof(Target))]` shape and `NoContent` PATCH responses.
+- Inherited patch DTO properties now participate in presence tracking, JSON metadata, and generated `ApplyTo`.
+- Added clearer diagnostics for unsupported patch shapes, inaccessible targets, duplicate names, and ambiguous mappings.
+- Fixed strict unknown-property rejection, property-level `JsonConverterAttribute` handling, and release packaging metadata.
 
 ## 0.1.0 - Initial release
 
