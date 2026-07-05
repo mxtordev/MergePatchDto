@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1 - README polish
+
+Docs-only release to refresh the NuGet package README.
+
+- Clarify the DTO-shaped PATCH problem statement.
+- Explain how MergePatchDto differs from ASP.NET Core JSON Patch operation documents.
+- Make quick-start, API overview, mapping attributes, compatibility, and limitations easier to scan.
+
 ## 0.1.0 - Initial release
 
 MergePatchDto provides source-generated DTO presence tracking for merge-patch-style ASP.NET Core endpoints.
