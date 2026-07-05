@@ -362,6 +362,11 @@ namespace MergePatchDto.Generators
             builder.Append(indent).AppendLine("        throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload must be an object.\");");
             builder.Append(indent).AppendLine("    }");
             builder.AppendLine();
+            builder.Append(indent)
+                .Append("    ")
+                .Append(generatedNames.ValidateJsonNamesMethodName)
+                .AppendLine("(options);");
+            builder.AppendLine();
             builder.Append(indent).AppendLine("    using (var document = global::System.Text.Json.JsonDocument.ParseValue(ref reader))");
             builder.Append(indent).AppendLine("    {");
             builder.Append(indent).Append("        var patch = new ").Append(model.TypeName).AppendLine("();");
@@ -434,6 +439,11 @@ namespace MergePatchDto.Generators
                 .Append(model.TypeName)
                 .AppendLine(" value, global::System.Text.Json.JsonSerializerOptions options)");
             builder.Append(indent).AppendLine("{");
+            builder.Append(indent)
+                .Append("    ")
+                .Append(generatedNames.ValidateJsonNamesMethodName)
+                .AppendLine("(options);");
+            builder.AppendLine();
             builder.Append(indent).AppendLine("    writer.WriteStartObject();");
 
             foreach (var property in model.Properties)
@@ -550,6 +560,42 @@ namespace MergePatchDto.Generators
             builder.Append(indent).AppendLine("{");
             builder.Append(indent).AppendLine("    var comparison = options.PropertyNameCaseInsensitive ? global::System.StringComparison.OrdinalIgnoreCase : global::System.StringComparison.Ordinal;");
             builder.Append(indent).AppendLine("    return global::System.String.Equals(actualName, expectedName, comparison);");
+            builder.Append(indent).AppendLine("}");
+            builder.AppendLine();
+            builder.Append(indent).Append("private static void ").Append(generatedNames.ValidateJsonNamesMethodName).AppendLine("(global::System.Text.Json.JsonSerializerOptions options)");
+            builder.Append(indent).AppendLine("{");
+            builder.Append(indent).AppendLine("    var comparer = options.PropertyNameCaseInsensitive ? global::System.StringComparer.OrdinalIgnoreCase : global::System.StringComparer.Ordinal;");
+            builder.Append(indent).AppendLine("    var jsonNames = new global::System.Collections.Generic.Dictionary<string, string>(comparer);");
+
+            foreach (var property in model.Properties)
+            {
+                builder.Append(indent)
+                    .Append("    ")
+                    .Append(generatedNames.AddJsonNameMethodName)
+                    .Append("(jsonNames, ")
+                    .Append(generatedNames.GetJsonNameMethodName)
+                    .Append("(")
+                    .Append(ToLiteral(property.Name))
+                    .Append(", ")
+                    .Append(property.ExplicitJsonName == null ? "null" : ToLiteral(property.ExplicitJsonName))
+                    .Append(", options), ")
+                    .Append(ToLiteral(property.Name))
+                    .AppendLine(");");
+            }
+
+            builder.Append(indent).AppendLine("}");
+            builder.AppendLine();
+            builder.Append(indent)
+                .Append("private static void ")
+                .Append(generatedNames.AddJsonNameMethodName)
+                .AppendLine("(global::System.Collections.Generic.Dictionary<string, string> jsonNames, string jsonName, string clrName)");
+            builder.Append(indent).AppendLine("{");
+            builder.Append(indent).AppendLine("    if (jsonNames.TryGetValue(jsonName, out var existingClrName))");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).AppendLine("        throw new global::System.Text.Json.JsonException(\"Merge patch DTO maps CLR properties '\" + existingClrName + \"' and '\" + clrName + \"' to duplicate JSON property name '\" + jsonName + \"'.\");");
+            builder.Append(indent).AppendLine("    }");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("    jsonNames.Add(jsonName, clrName);");
             builder.Append(indent).AppendLine("}");
         }
 
@@ -870,6 +916,8 @@ namespace MergePatchDto.Generators
                 string clearProvidedMethodName,
                 string getJsonNameMethodName,
                 string jsonNameEqualsMethodName,
+                string validateJsonNamesMethodName,
+                string addJsonNameMethodName,
                 Dictionary<string, string> initOnlySetterMethodNames,
                 Dictionary<string, string> jsonOptionsMethodNames)
             {
@@ -880,6 +928,8 @@ namespace MergePatchDto.Generators
                 ClearProvidedMethodName = clearProvidedMethodName;
                 GetJsonNameMethodName = getJsonNameMethodName;
                 JsonNameEqualsMethodName = jsonNameEqualsMethodName;
+                ValidateJsonNamesMethodName = validateJsonNamesMethodName;
+                AddJsonNameMethodName = addJsonNameMethodName;
                 this.initOnlySetterMethodNames = initOnlySetterMethodNames;
                 this.jsonOptionsMethodNames = jsonOptionsMethodNames;
             }
@@ -897,6 +947,10 @@ namespace MergePatchDto.Generators
             public string GetJsonNameMethodName { get; }
 
             public string JsonNameEqualsMethodName { get; }
+
+            public string ValidateJsonNamesMethodName { get; }
+
+            public string AddJsonNameMethodName { get; }
 
             public static GeneratedNames Create(PatchDtoModel model)
             {
@@ -941,6 +995,8 @@ namespace MergePatchDto.Generators
 
                 var getJsonNameMethodName = GetAvailableName("__MergePatchDtoGetJsonName", converterMemberNames);
                 var jsonNameEqualsMethodName = GetAvailableName("__MergePatchDtoJsonNameEquals", converterMemberNames);
+                var validateJsonNamesMethodName = GetAvailableName("__MergePatchDtoValidateJsonNames", converterMemberNames);
+                var addJsonNameMethodName = GetAvailableName("__MergePatchDtoAddJsonName", converterMemberNames);
 
                 return new GeneratedNames(
                     converterTypeName,
@@ -950,6 +1006,8 @@ namespace MergePatchDto.Generators
                     clearProvidedMethodName,
                     getJsonNameMethodName,
                     jsonNameEqualsMethodName,
+                    validateJsonNamesMethodName,
+                    addJsonNameMethodName,
                     initOnlySetterMethodNames,
                     jsonOptionsMethodNames);
             }
