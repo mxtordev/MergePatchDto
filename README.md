@@ -125,7 +125,7 @@ private static void ApplyPriority(Document target, int? value)
 private static void ApplyPriority(UpdateDocumentPatch patch, Document target, int? value)
 ```
 
-Target-specific mapping attributes have no effect on targetless patch types and produce a warning.
+Target-specific mapping attributes are invalid on targetless patch types and produce an error.
 
 ## JSON Behavior
 
@@ -165,10 +165,10 @@ Common examples:
 - `[PatchUsing]` method is missing or has an unsupported signature
 - a property combines conflicting mapping attributes
 
-The intentional warning is `MPD009`. It is reported when a targetless `[MergePatch]`
-DTO uses target-specific mapping attributes such as `[PatchTo]`, `[PatchIgnore]`,
-or `[PatchUsing]`. Targetless DTOs do not generate `ApplyTo`, so those attributes
-are ignored. Add a target type with `[MergePatch(typeof(Target))]` or
+`MPD009` is reported when a targetless `[MergePatch]` DTO uses target-specific
+mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, or `[PatchUsing]`.
+Targetless DTOs do not generate `ApplyTo`, so those attributes would be
+misleading. Add a target type with `[MergePatch(typeof(Target))]` or
 `[MergePatchTarget(typeof(Target))]`, or remove the target-specific attributes.
 
 ## Limitations

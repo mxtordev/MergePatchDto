@@ -19,7 +19,7 @@ public class DiagnosticsTests
             ["MPD006"] = DiagnosticSeverity.Error,
             ["MPD007"] = DiagnosticSeverity.Error,
             ["MPD008"] = DiagnosticSeverity.Error,
-            ["MPD009"] = DiagnosticSeverity.Warning,
+            ["MPD009"] = DiagnosticSeverity.Error,
             ["MPD010"] = DiagnosticSeverity.Error,
             ["MPD011"] = DiagnosticSeverity.Error,
             ["MPD012"] = DiagnosticSeverity.Error,
@@ -498,7 +498,7 @@ public class DiagnosticsTests
     }
 
     [Fact]
-    public void WarnsWhenTargetlessPatchUsesTargetMappingAttributes()
+    public void ReportsErrorWhenTargetlessPatchUsesTargetMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -516,11 +516,11 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id is "MPD004" or "MPD005" or "MPD006" or "MPD007");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void WarnsInsteadOfReportingConflictsForTargetlessPatchMappingAttributes()
+    public void ReportsTargetlessMappingErrorInsteadOfConflictsForTargetlessPatchMappingAttributes()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -536,11 +536,11 @@ public class DiagnosticsTests
             """);
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Id == "MPD003");
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 
     [Fact]
-    public void WarnsWhenTargetlessPatchUsesPatchIgnore()
+    public void ReportsErrorWhenTargetlessPatchUsesPatchIgnore()
     {
         var diagnostics = DiagnosticTestHelper.GetDiagnostics(
             """
@@ -554,6 +554,6 @@ public class DiagnosticsTests
             }
             """);
 
-        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Warning);
+        Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "MPD009" && diagnostic.Severity == DiagnosticSeverity.Error);
     }
 }
