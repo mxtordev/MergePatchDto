@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      nuget_username:
+        description: NuGet.org username or organization profile name, not an email address.
+        required: true
+        default: mxtordev
+        type: string
+      confirm_publish:
+        description: Type publish to confirm publishing to nuget.org.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish NuGet package
+    runs-on: ubuntu-latest
+    environment: release
+
+    steps:
+      - name: Ensure main branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            printf 'Release workflow must be run from main, got %s\n' "$GITHUB_REF" >&2
+            exit 1
+          fi
+
+      - name: Confirm publish
+        shell: bash
+        env:
+          CONFIRM_PUBLISH: ${{ inputs.confirm_publish }}
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRM_PUBLISH" != "publish" ]; then
+            printf 'Set confirm_publish to publish to continue.\n' >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore MergePatchDto.slnx
+
+      - name: Build
+        run: dotnet build MergePatchDto.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test MergePatchDto.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/MergePatchDto/MergePatchDto.csproj --configuration Release --no-restore --output artifacts/packages
+
+      - name: Package smoke test
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          packages=(artifacts/packages/MergePatchDto.*.nupkg)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            printf 'Expected exactly one MergePatchDto package, found %s\n' "${#packages[@]}" >&2
+            exit 1
+          fi
+
+          package_file="${packages[0]}"
+          package_version="$(basename "$package_file")"
+          package_version="${package_version#MergePatchDto.}"
+          package_version="${package_version%.nupkg}"
+
+          tests/PackageSmoke/run.sh artifacts/packages "$package_version" net10.0
+          tests/PackageSmoke/run.sh artifacts/packages "$package_version" net8.0 8.0.100
+
+          printf 'package_file=%s\n' "$package_file" >> "$GITHUB_OUTPUT"
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mergepatchdto-release-packages
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+          if-no-files-found: error
+
+      - name: NuGet login
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ inputs.nuget_username }}
+
+      - name: Publish package
+        run: >
+          dotnet nuget push "${{ steps.package.outputs.package_file }}"
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
