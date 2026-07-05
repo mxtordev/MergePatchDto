@@ -62,6 +62,11 @@ namespace MergePatchDto.Generators
                     return;
                 }
 
+                if (ReportDuplicateExplicitJsonPropertyNames(sourceContext, model))
+                {
+                    return;
+                }
+
                 var source = SourceTextEmitter.Emit(model, compilation, sourceContext);
                 sourceContext.AddSource(SourceTextEmitter.GetHintName(model), SourceText.From(source, System.Text.Encoding.UTF8));
             });
@@ -155,6 +160,36 @@ namespace MergePatchDto.Generators
                     model.TypeSymbol.Name,
                     member.Name));
                 hasErrors = true;
+            }
+
+            return hasErrors;
+        }
+
+        private static bool ReportDuplicateExplicitJsonPropertyNames(SourceProductionContext context, PatchDtoModel model)
+        {
+            var hasErrors = false;
+            var seenNames = new System.Collections.Generic.Dictionary<string, PatchPropertyModel>(System.StringComparer.Ordinal);
+
+            foreach (var property in model.Properties)
+            {
+                if (property.ExplicitJsonName == null)
+                {
+                    continue;
+                }
+
+                if (seenNames.TryGetValue(property.ExplicitJsonName, out var existingProperty))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Diagnostics.DuplicateExplicitJsonPropertyName,
+                        property.Location,
+                        existingProperty.Name,
+                        property.Name,
+                        property.ExplicitJsonName));
+                    hasErrors = true;
+                    continue;
+                }
+
+                seenNames.Add(property.ExplicitJsonName, property);
             }
 
             return hasErrors;
