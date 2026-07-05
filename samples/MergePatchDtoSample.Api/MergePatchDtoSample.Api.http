@@ -1,0 +1,38 @@
+@MergePatchDtoSample.Api_HostAddress = http://localhost:5275
+
+GET {{MergePatchDtoSample.Api_HostAddress}}/api/people
+Accept: application/json
+
+###
+
+PATCH {{MergePatchDtoSample.Api_HostAddress}}/api/people/11111111-1111-1111-1111-111111111111/generated
+Content-Type: application/json
+
+{
+  "name": "Updated from .http",
+  "email": "updated@example.com",
+  "phone": "+46 70 999 99 99",
+  "bio": null,
+  "age": "29",
+  "address": { "city": "Gothenburg", "country": "SE" }
+}
+
+###
+
+PATCH {{MergePatchDtoSample.Api_HostAddress}}/api/people/11111111-1111-1111-1111-111111111111/generated
+Content-Type: application/json
+
+{
+  "address": { "city": "Gothenburg" }
+}
+
+###
+
+PATCH {{MergePatchDtoSample.Api_HostAddress}}/api/people/11111111-1111-1111-1111-111111111111/interface
+Content-Type: application/json
+
+{
+  "name": "Updated through interface",
+  "email": "updated@example.com",
+  "phone": "+46 70 333 33 33"
+}
