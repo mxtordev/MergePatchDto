@@ -1,10 +1,14 @@
 # MergePatchDto
 
-MergePatchDto is a source-generator package for ergonomic merge-patch-style DTO presence tracking in ASP.NET Core.
+MergePatchDto is a NuGet package for .NET APIs that want normal DTO-shaped PATCH request bodies, not JSON Patch operation arrays.
 
-It is not a full RFC 7396 JSON document merge engine. The package tracks which top-level DTO properties appeared in the JSON body and can generate typed assignment helpers for those properties.
+It gives PATCH endpoints:
 
-It lets a PATCH endpoint distinguish:
+- a typed allowlist of patchable fields
+- explicit null vs missing tracking
+- optional generated `ApplyTo` mapping
+
+That lets a PATCH endpoint distinguish:
 
 - missing property: leave the target unchanged
 - explicit `null`: assign or clear the target value
@@ -74,9 +78,34 @@ public async Task<IActionResult> Patch(Guid id, UpdateDocumentPatch patch)
 
 This clears `Document.Summary` and leaves every omitted property unchanged.
 
+## DTO-Shaped PATCH
+
+`JsonPatchDocument<T>` is useful when clients need RFC 6902 operation documents with paths and operations. MergePatchDto is for endpoints where the public contract is a fixed DTO shape.
+
+The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
+
+```csharp
+[MergePatch(typeof(Document))]
+public partial class UpdateDocumentPatch
+{
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+}
+```
+
+The target type lets MergePatchDto generate typed mapping:
+
+```csharp
+patch.ApplyTo(document);
+```
+
+It does not mean every property on `Document` is patchable. The DTO remains the boundary.
+
 ## Presence Checks
 
-The generated `Has` API stays useful when the update needs explicit domain logic:
+The hard part of DTO-shaped PATCH is knowing what the client actually sent. After normal deserialization, a missing JSON property and an explicit `null` can both leave a CLR property as `null`.
+
+The generated `Has` API exposes JSON presence, so validation and domain logic do not have to guess from nullable/default values:
 
 ```csharp
 var has = patch.Has;
@@ -86,9 +115,9 @@ if (has.Description) entity.Summary = patch.Description;
 if (has.Priority) entity.SetPriority(patch.Priority);
 ```
 
-## Targetless Patches
+## Targetless Patches for Domain Logic
 
-If you only want JSON presence tracking, omit the target type:
+Generated `ApplyTo` is useful when patch properties map cleanly to a target type. When the update needs domain logic, omit the target type:
 
 ```csharp
 using MergePatch;
@@ -101,7 +130,7 @@ public partial class UpdateDocumentPatch
 }
 ```
 
-MergePatchDto still generates the JSON converter and `Has` API. Add a target type when you want a typed generated `ApplyTo` method.
+MergePatchDto still generates the JSON converter and `Has` API:
 
 ```csharp
 var has = patch.Has;
@@ -112,6 +141,8 @@ if (has.Name)
 if (has.PriorityDelta)
     entity.IncrementPriority(patch.PriorityDelta.GetValueOrDefault());
 ```
+
+Add a target type when you want a typed generated `ApplyTo` method.
 
 ## Mapping Rules
 
