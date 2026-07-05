@@ -124,39 +124,13 @@ patch.ApplyTo(person);
 
 It does not mean every property on `Person` is patchable. The DTO remains the boundary.
 
-## API Overview
+## Manual Updates
 
-- `[MergePatch]` marks a patch DTO and generates presence tracking.
-- `[MergePatch(typeof(Target))]` also generates `ApplyTo(Target target)`.
-- `Has` exposes one boolean member per DTO property, using the CLR property
-  name.
-- `ApplyTo` updates only target properties whose matching patch property was
-  present in JSON.
-- `[MergePatchTarget(typeof(OtherTarget))]` adds another typed `ApplyTo`
-  overload.
-- `[PatchTo]`, `[PatchIgnore]`, and `[PatchUsing]` customize generated mapping.
-- `UnknownPropertyHandling` controls whether unknown JSON properties are ignored
-  or rejected.
+Generated `ApplyTo` is useful when patch properties map cleanly to a target type.
+When validation or domain logic needs to act only on fields sent by the client,
+use the generated `Has` API directly.
 
-Targetless `[MergePatch]` DTOs get `Has` and the JSON converter, but no generated
-`ApplyTo` method.
-
-## Presence Tracking
-
-The generated `Has` API exposes JSON presence, so validation and domain logic
-do not have to guess from nullable/default values:
-
-```csharp
-var has = patch.Has;
-
-if (has.Name) person.Name = patch.Name;
-if (has.Bio) person.Bio = patch.Bio;
-if (has.Age) person.SetAge(patch.Age);
-```
-
-## Manual Updates Without ApplyTo
-
-Generated `ApplyTo` is useful when patch properties map cleanly to a target type. When the update needs domain logic, omit the target type:
+For manual update logic, omit the target type:
 
 ```csharp
 using MergePatch;
@@ -169,7 +143,8 @@ public partial class ManualPersonPatch
 }
 ```
 
-MergePatchDto still generates the JSON converter and `Has` API:
+MergePatchDto still generates the JSON converter and `Has` API, but no
+`ApplyTo` method:
 
 ```csharp
 var has = patch.Has;
@@ -232,22 +207,13 @@ private static void ApplyAge(Person target, int? value)
 private static void ApplyAge(UpdatePersonPatch patch, Person target, int? value)
 ```
 
-Target-specific mapping attributes are invalid on targetless patch types and produce an error.
+Target-specific mapping attributes are invalid on targetless patch types.
+Invalid patch shapes and mappings fail at build time with `MPDxxx` diagnostics.
 
-## JSON Deserialization
+## JSON Behavior
 
-MergePatchDto generates a `System.Text.Json` converter for each patch DTO.
-
-The converter:
-
-- tracks top-level JSON property presence
-- stores presence by CLR property name
-- respects `JsonPropertyNameAttribute`
-- respects property-level `JsonConverterAttribute`
-- respects property-level `JsonNumberHandlingAttribute`
-- respects `JsonIgnoreAttribute` read behavior
-- respects `JsonSerializerOptions.PropertyNamingPolicy`
-- treats explicit `null` as provided
+MergePatchDto uses `System.Text.Json` for patch DTOs. It records top-level
+property presence, including properties sent as `null`.
 
 Unknown JSON properties are ignored by default. To reject them:
 
@@ -259,37 +225,9 @@ public partial class StrictPatch
 }
 ```
 
-## Diagnostics
-
-Invalid patch shapes and target-specific mappings fail during build with MergePatchDto diagnostics.
-
-Common examples:
-
-- patch DTO class is not `partial`
-- target property does not exist
-- target property setter is not accessible
-- patch property type cannot be assigned to the target property type
-- `[PatchUsing]` method is missing or has an unsupported signature
-- a property combines conflicting mapping attributes
-
-`MPD009` is reported when a targetless `[MergePatch]` DTO uses target-specific
-mapping attributes such as `[PatchTo]`, `[PatchIgnore]`, or `[PatchUsing]`.
-Add a target type or remove the target-specific attributes.
-
 ## Compatibility
 
 MergePatchDto supports SDK-style projects built with the .NET 8 SDK or newer.
 The runtime assembly targets `netstandard2.0`, but the source generator runs
 inside the consumer's C# compiler, so the supported compiler floor is the .NET
 8 SDK / Roslyn 4.8.
-
-## Limitations
-
-- MergePatchDto is DTO presence tracking for merge-patch-style endpoints, not a complete RFC 7396 implementation.
-- Patch DTOs must be top-level, non-generic, non-abstract partial classes.
-- Patch DTOs need an accessible parameterless constructor.
-- `required` members are not supported.
-- Presence tracking is top-level only.
-- Nested object properties are replacement values and are assigned according to the property mapping.
-- Arrays are replacement values, not partial merges.
-- JSON Patch operation arrays, expression-tree mapping, wrapper properties, and DI-driven `ApplyTo` are not part of this package.
