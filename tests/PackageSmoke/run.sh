@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-  printf 'Usage: %s <package-feed-directory> <package-version>\n' "$0" >&2
+if [ "$#" -lt 2 ] || [ "$#" -gt 4 ]; then
+  printf 'Usage: %s <package-feed-directory> <package-version> [target-framework] [sdk-version]\n' "$0" >&2
   exit 2
 fi
 
 feed_dir="$1"
 package_version="$2"
+target_framework="${3:-net10.0}"
+sdk_version="${4:-}"
 
 if [ -z "$package_version" ]; then
   printf 'Package version must not be empty.\n' >&2
@@ -38,6 +40,17 @@ trap cleanup EXIT
 
 cp -R "$consumer_src/." "$work_dir/"
 
+if [ -n "$sdk_version" ]; then
+  cat > "$work_dir/global.json" <<EOF
+{
+  "sdk": {
+    "version": "$sdk_version",
+    "rollForward": "latestFeature"
+  }
+}
+EOF
+fi
+
 cat > "$work_dir/NuGet.Config" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -50,15 +63,19 @@ EOF
 
 export NUGET_PACKAGES="$work_dir/.nuget/packages"
 
-project="$work_dir/PackageSmoke.Consumer.csproj"
+cd "$work_dir"
+
+project="PackageSmoke.Consumer.csproj"
 
 dotnet restore "$project" \
-  --configfile "$work_dir/NuGet.Config" \
-  -p:MergePatchDtoPackageVersion="$package_version"
+  --configfile NuGet.Config \
+  -p:MergePatchDtoPackageVersion="$package_version" \
+  -p:PackageSmokeTargetFramework="$target_framework"
 
 dotnet build "$project" \
   --configuration Release \
   --no-restore \
-  -p:MergePatchDtoPackageVersion="$package_version"
+  -p:MergePatchDtoPackageVersion="$package_version" \
+  -p:PackageSmokeTargetFramework="$target_framework"
 
-dotnet "$work_dir/bin/Release/net10.0/PackageSmoke.Consumer.dll"
+dotnet "bin/Release/$target_framework/PackageSmoke.Consumer.dll"

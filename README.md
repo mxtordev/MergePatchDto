@@ -22,6 +22,13 @@ Nested object properties are replacement values, not recursive document merges. 
 dotnet add package MergePatchDto
 ```
 
+## Compatibility
+
+MergePatchDto supports SDK-style projects built with the .NET 8 SDK or newer.
+The runtime assembly targets `netstandard2.0`, but the source generator runs
+inside the consumer's C# compiler, so the supported compiler floor is the .NET
+8 SDK / Roslyn 4.8.
+
 ## Quick Start
 
 Define a partial patch DTO and point it at the type it updates:
