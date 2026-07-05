@@ -1,14 +1,9 @@
 # MergePatchDto
 
 MergePatchDto is a NuGet package for .NET APIs that want DTO-shaped PATCH
-request bodies while still knowing which JSON properties the client actually
-sent.
-
-Normal `System.Text.Json` deserialization cannot tell the difference between an
-omitted nullable property and an explicit `null`. ASP.NET Core's
-`Microsoft.AspNetCore.JsonPatch.JsonPatchDocument<T>` solves a different
-problem with RFC 6902 operation arrays. MergePatchDto keeps the public contract
-as an ordinary JSON object and adds generated presence tracking around it.
+request bodies while still distinguishing omitted properties, explicit `null`,
+and explicit values. It keeps PATCH bodies as ordinary JSON objects instead of
+JSON Patch operation arrays.
 
 It gives PATCH endpoints:
 
@@ -21,8 +16,6 @@ That lets a PATCH endpoint distinguish:
 - missing property: leave the target unchanged
 - explicit `null`: assign or clear the target value
 - explicit value: assign the target value
-
-Nested object properties are replacement values, not recursive document merges. Arrays are replacement values, not element-level merges.
 
 ## Install
 
@@ -143,8 +136,6 @@ if (has.AdminNote)
 }
 ```
 
-Add a target type when you want a typed generated `ApplyTo` method.
-
 ## Mapping Attributes
 
 By default, patch properties map to target properties with the same CLR name.
@@ -156,7 +147,8 @@ If a target property should not be patchable, leave it off the DTO.
   deserialized and presence-tracked, but excluded from generated `ApplyTo`.
 - `[PatchUsing(nameof(Method))]` calls custom domain logic when the patch
   property was provided.
-- Targets can be interfaces.
+- Targets can be interfaces when the same patch shape should apply to multiple
+  concrete types.
 
 ```csharp
 [MergePatch(typeof(Person))]
@@ -193,6 +185,9 @@ Invalid patch shapes and mappings fail at build time with `MPDxxx` diagnostics.
 
 MergePatchDto uses `System.Text.Json` for patch DTOs. It records top-level
 property presence, including properties sent as `null`.
+
+Nested object properties are replacement values, not recursive document merges.
+Arrays are replacement values, not element-level merges.
 
 Unknown JSON properties are ignored by default. To reject them:
 
