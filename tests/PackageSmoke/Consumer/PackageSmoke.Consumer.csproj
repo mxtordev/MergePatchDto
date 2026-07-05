@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <MergePatchDtoPackageVersion Condition="'$(MergePatchDtoPackageVersion)' == ''">0.0.0-package-smoke</MergePatchDtoPackageVersion>
+  </PropertyGroup>
+
+  <Target Name="RequireMergePatchDtoPackageVersion" BeforeTargets="Restore" Condition="'$(MergePatchDtoPackageVersion)' == '0.0.0-package-smoke'">
+    <Error Text="Pass -p:MergePatchDtoPackageVersion=... when running the package smoke consumer." />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="MergePatchDto" Version="$(MergePatchDtoPackageVersion)" />
+  </ItemGroup>
+
+</Project>
