@@ -375,18 +375,26 @@ namespace MergePatchDto.Generators
                 .Append(generatedNames.ValidateJsonNamesMethodName)
                 .AppendLine("(options);");
             builder.AppendLine();
-            builder.Append(indent).AppendLine("    using (var document = global::System.Text.Json.JsonDocument.ParseValue(ref reader))");
-            builder.Append(indent).AppendLine("    {");
-            builder.Append(indent).Append("        var patch = new ").Append(model.TypeName).AppendLine("();");
+            builder.Append(indent).Append("    var patch = new ").Append(model.TypeName).AppendLine("();");
             builder.AppendLine();
-            builder.Append(indent).AppendLine("        foreach (var jsonProperty in document.RootElement.EnumerateObject())");
+            builder.Append(indent).AppendLine("    while (reader.Read())");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).AppendLine("        if (reader.TokenType == global::System.Text.Json.JsonTokenType.EndObject)");
             builder.Append(indent).AppendLine("        {");
-            builder.Append(indent).AppendLine("            var jsonPropertyName = jsonProperty.Name;");
+            builder.Append(indent).AppendLine("            return patch;");
+            builder.Append(indent).AppendLine("        }");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("        if (reader.TokenType != global::System.Text.Json.JsonTokenType.PropertyName)");
+            builder.Append(indent).AppendLine("        {");
+            builder.Append(indent).AppendLine("            throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload must be an object.\");");
+            builder.Append(indent).AppendLine("        }");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("        var jsonPropertyName = reader.GetString()!;");
 
             foreach (var property in model.Properties)
             {
                 builder.AppendLine();
-                builder.Append(indent).Append("            if (")
+                builder.Append(indent).Append("        if (")
                     .Append(generatedNames.JsonNameEqualsMethodName)
                     .Append("(jsonPropertyName, ")
                     .Append(generatedNames.GetJsonNameMethodName)
@@ -395,13 +403,17 @@ namespace MergePatchDto.Generators
                     .Append(", ")
                     .Append(property.ExplicitJsonName == null ? "null" : ToLiteral(property.ExplicitJsonName))
                     .AppendLine(", options), options))");
+                builder.Append(indent).AppendLine("        {");
+                builder.Append(indent).AppendLine("            if (!reader.Read())");
                 builder.Append(indent).AppendLine("            {");
+                builder.Append(indent).AppendLine("                throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload is incomplete.\");");
+                builder.Append(indent).AppendLine("            }");
 
-                var deserializeExpression = "global::System.Text.Json.JsonSerializer.Deserialize<" + property.TypeName + ">(jsonProperty.Value, " + GetJsonOptionsExpression(property, "options", generatedNames) + ")";
+                var deserializeExpression = "global::System.Text.Json.JsonSerializer.Deserialize<" + property.TypeName + ">(ref reader, " + GetJsonOptionsExpression(property, "options", generatedNames) + ")";
                 if (property.IsInitOnly)
                 {
                     builder.Append(indent)
-                        .Append("                ")
+                        .Append("            ")
                         .Append(generatedNames.GetInitOnlySetterMethodName(property))
                         .Append("(patch, ")
                         .Append(deserializeExpression)
@@ -410,7 +422,7 @@ namespace MergePatchDto.Generators
                 else
                 {
                     builder.Append(indent)
-                        .Append("                patch.")
+                        .Append("            patch.")
                         .Append(EscapeIdentifier(property.Name))
                         .Append(" = ")
                         .Append(deserializeExpression)
@@ -418,25 +430,37 @@ namespace MergePatchDto.Generators
                 }
 
                 builder.Append(indent)
-                    .Append("                patch.")
+                    .Append("            patch.")
                     .Append(generatedNames.MarkProvidedMethodName)
                     .Append("(")
                     .Append(ToLiteral(property.Name))
                     .AppendLine(");");
-                builder.Append(indent).AppendLine("                continue;");
-                builder.Append(indent).AppendLine("            }");
+                builder.Append(indent).AppendLine("            continue;");
+                builder.Append(indent).AppendLine("        }");
             }
 
             if (model.RejectUnknownProperties)
             {
                 builder.AppendLine();
-                builder.Append(indent).AppendLine("            throw new global::System.Text.Json.JsonException(\"Unknown JSON property '\" + jsonPropertyName + \"'.\");");
+                builder.Append(indent).AppendLine("        throw new global::System.Text.Json.JsonException(\"Unknown JSON property '\" + jsonPropertyName + \"'.\");");
+            }
+            else
+            {
+                builder.AppendLine();
+                builder.Append(indent).AppendLine("        if (!reader.Read())");
+                builder.Append(indent).AppendLine("        {");
+                builder.Append(indent).AppendLine("            throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload is incomplete.\");");
+                builder.Append(indent).AppendLine("        }");
+                builder.AppendLine();
+                builder.Append(indent)
+                    .Append("        ")
+                    .Append(generatedNames.SkipValueMethodName)
+                    .AppendLine("(ref reader);");
             }
 
-            builder.Append(indent).AppendLine("        }");
-            builder.AppendLine();
-            builder.Append(indent).AppendLine("        return patch;");
             builder.Append(indent).AppendLine("    }");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("    throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload is incomplete.\");");
             builder.Append(indent).AppendLine("}");
         }
 
@@ -579,6 +603,38 @@ namespace MergePatchDto.Generators
                 builder.Append(indent).AppendLine("}");
             }
 
+            builder.AppendLine();
+            builder.Append(indent)
+                .Append("private static void ")
+                .Append(generatedNames.SkipValueMethodName)
+                .AppendLine("(ref global::System.Text.Json.Utf8JsonReader reader)");
+            builder.Append(indent).AppendLine("{");
+            builder.Append(indent).AppendLine("    if (reader.TokenType != global::System.Text.Json.JsonTokenType.StartObject && reader.TokenType != global::System.Text.Json.JsonTokenType.StartArray)");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).AppendLine("        return;");
+            builder.Append(indent).AppendLine("    }");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("    var depth = 0;");
+            builder.Append(indent).AppendLine("    do");
+            builder.Append(indent).AppendLine("    {");
+            builder.Append(indent).AppendLine("        if (reader.TokenType == global::System.Text.Json.JsonTokenType.StartObject || reader.TokenType == global::System.Text.Json.JsonTokenType.StartArray)");
+            builder.Append(indent).AppendLine("        {");
+            builder.Append(indent).AppendLine("            depth++;");
+            builder.Append(indent).AppendLine("        }");
+            builder.Append(indent).AppendLine("        else if (reader.TokenType == global::System.Text.Json.JsonTokenType.EndObject || reader.TokenType == global::System.Text.Json.JsonTokenType.EndArray)");
+            builder.Append(indent).AppendLine("        {");
+            builder.Append(indent).AppendLine("            depth--;");
+            builder.Append(indent).AppendLine("            if (depth == 0)");
+            builder.Append(indent).AppendLine("            {");
+            builder.Append(indent).AppendLine("                return;");
+            builder.Append(indent).AppendLine("            }");
+            builder.Append(indent).AppendLine("        }");
+            builder.Append(indent).AppendLine("    }");
+            builder.Append(indent).AppendLine("    while (reader.Read());");
+            builder.AppendLine();
+            builder.Append(indent).AppendLine("    throw new global::System.Text.Json.JsonException(\"Patch DTO JSON payload is incomplete.\");");
+            builder.Append(indent).AppendLine("}");
+            builder.AppendLine();
             builder.AppendLine();
             builder.Append(indent).Append("private static string ").Append(generatedNames.GetJsonNameMethodName).AppendLine("(string clrName, string? explicitJsonName, global::System.Text.Json.JsonSerializerOptions options)");
             builder.Append(indent).AppendLine("{");
@@ -953,6 +1009,7 @@ namespace MergePatchDto.Generators
                 string wasProvidedMethodName,
                 string markProvidedMethodName,
                 string clearProvidedMethodName,
+                string skipValueMethodName,
                 string getJsonNameMethodName,
                 string jsonNameEqualsMethodName,
                 string validateJsonNamesMethodName,
@@ -965,6 +1022,7 @@ namespace MergePatchDto.Generators
                 WasProvidedMethodName = wasProvidedMethodName;
                 MarkProvidedMethodName = markProvidedMethodName;
                 ClearProvidedMethodName = clearProvidedMethodName;
+                SkipValueMethodName = skipValueMethodName;
                 GetJsonNameMethodName = getJsonNameMethodName;
                 JsonNameEqualsMethodName = jsonNameEqualsMethodName;
                 ValidateJsonNamesMethodName = validateJsonNamesMethodName;
@@ -982,6 +1040,8 @@ namespace MergePatchDto.Generators
             public string MarkProvidedMethodName { get; }
 
             public string ClearProvidedMethodName { get; }
+
+            public string SkipValueMethodName { get; }
 
             public string GetJsonNameMethodName { get; }
 
@@ -1036,6 +1096,7 @@ namespace MergePatchDto.Generators
                 var jsonNameEqualsMethodName = GetAvailableName("__MergePatchDtoJsonNameEquals", converterMemberNames);
                 var validateJsonNamesMethodName = GetAvailableName("__MergePatchDtoValidateJsonNames", converterMemberNames);
                 var addJsonNameMethodName = GetAvailableName("__MergePatchDtoAddJsonName", converterMemberNames);
+                var skipValueMethodName = GetAvailableName("__MergePatchDtoSkipValue", converterMemberNames);
 
                 return new GeneratedNames(
                     converterTypeName,
@@ -1043,6 +1104,7 @@ namespace MergePatchDto.Generators
                     wasProvidedMethodName,
                     markProvidedMethodName,
                     clearProvidedMethodName,
+                    skipValueMethodName,
                     getJsonNameMethodName,
                     jsonNameEqualsMethodName,
                     validateJsonNamesMethodName,
