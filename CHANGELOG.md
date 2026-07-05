@@ -1,6 +1,6 @@
 # Changelog
 
-## Initial release
+## 0.1.0 - Initial release
 
 MergePatchDto provides source-generated DTO presence tracking for merge-patch-style ASP.NET Core endpoints.
 
