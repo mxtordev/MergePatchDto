@@ -31,3 +31,21 @@ jobs:
 
       - name: Pack
         run: dotnet pack src/MergePatchDto/MergePatchDto.csproj --configuration Release --no-restore --output artifacts/packages
+
+      - name: Package smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          packages=(artifacts/packages/MergePatchDto.*.nupkg)
+          if [ "${#packages[@]}" -ne 1 ]; then
+            printf 'Expected exactly one MergePatchDto package, found %s\n' "${#packages[@]}" >&2
+            exit 1
+          fi
+
+          package_file="$(basename "${packages[0]}")"
+          package_version="${package_file#MergePatchDto.}"
+          package_version="${package_version%.nupkg}"
+
+          tests/PackageSmoke/run.sh artifacts/packages "$package_version"
