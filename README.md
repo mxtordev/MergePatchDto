@@ -1,6 +1,14 @@
 # MergePatchDto
 
-MergePatchDto is a NuGet package for .NET APIs that want normal DTO-shaped PATCH request bodies, not JSON Patch operation arrays.
+MergePatchDto is a NuGet package for .NET APIs that want DTO-shaped PATCH
+request bodies while still knowing which JSON properties the client actually
+sent.
+
+Normal `System.Text.Json` deserialization cannot tell the difference between an
+omitted nullable property and an explicit `null`. ASP.NET Core's
+`Microsoft.AspNetCore.JsonPatch.JsonPatchDocument<T>` solves a different
+problem with RFC 6902 operation arrays. MergePatchDto keeps the public contract
+as an ordinary JSON object and adds generated presence tracking around it.
 
 It gives PATCH endpoints:
 
@@ -70,9 +78,8 @@ update methods, use the mapping attributes described below.
 
 ## When to Use MergePatchDto
 
-ASP.NET Core's `Microsoft.AspNetCore.JsonPatch.JsonPatchDocument<T>` is useful
-when clients need RFC 6902 operation documents with paths and operations.
-MergePatchDto is for endpoints where the public contract is a fixed DTO shape.
+Use MergePatchDto when the endpoint should accept a fixed DTO shape and update
+only fields declared on that DTO.
 
 The patch DTO is the allowlist. Properties that are not on the patch DTO are not patchable through that endpoint, even if they exist on the target type.
 
@@ -109,9 +116,8 @@ generated `ApplyTo` method.
 
 ## Presence Tracking
 
-The hard part of DTO-shaped PATCH is knowing what the client actually sent. After normal deserialization, a missing JSON property and an explicit `null` can both leave a CLR property as `null`.
-
-The generated `Has` API exposes JSON presence, so validation and domain logic do not have to guess from nullable/default values:
+The generated `Has` API exposes JSON presence, so validation and domain logic
+do not have to guess from nullable/default values:
 
 ```csharp
 var has = patch.Has;
