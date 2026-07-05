@@ -493,10 +493,16 @@ namespace MergePatchDto.Generators
                 JsonNameResolver.GetJsonPropertyName(property),
                 HasJsonConverterAttribute(property),
                 GetJsonNumberHandling(property),
+                RejectsExplicitNull(property.Type),
                 hasPatchIgnore,
                 patchToTargetName,
                 patchUsingMethodName,
                 property.Locations.FirstOrDefault());
+        }
+
+        private static bool RejectsExplicitNull(ITypeSymbol type)
+        {
+            return !type.IsValueType && type.NullableAnnotation == NullableAnnotation.NotAnnotated;
         }
 
         private static bool HasJsonConverterAttribute(IPropertySymbol property)
